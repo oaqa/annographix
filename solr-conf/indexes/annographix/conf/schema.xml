@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+<!-- This is a minimal configuration -->
+<schema name="annographix" version="2.0">
+  <types>
+   <fieldtype name="string"  class="solr.StrField"  sortMissingLast="true" omitNorms="true"/>
+   <fieldType name="long"    class="solr.LongField" omitNorms="true"/>
+   <fieldType name="integer" class="solr.IntField"  omitNorms="true"/>
+   <fieldType name="text_lc" class="solr.TextField" positionIncrementGap="1">
+     <analyzer>
+        <!--
+        If the short version of the class doesn't work with Leo's indexing application.
+        <tokenizer class="org.apache.lucene.analysis.standard.StandardTokenizerFactory" maxTokenLength="255"/>
+        -->
+       <tokenizer class="solr.StandardTokenizerFactory" maxTokenLength="255"/>
+       <filter class="solr.LowerCaseFilterFactory" />
+       <filter class="solr.StopFilterFactory" words="stopwords.txt" ignoreCase="true"/> 
+       <!-- let's use a good stemmer here -->
+       <filter class="solr.HunspellStemFilterFactory"
+              dictionary="en_US.dic"
+              affix="en_US.aff"
+              ignoreCase="true" 
+       />
+     </analyzer>
+   </fieldType>
+    <fieldtype name="payload" stored="false" indexed="true" class="solr.TextField" >
+      <analyzer>
+        <!-- 
+             One must use a white space tokenizer here!
+             Also beware, this one is hardwired to be lowercase! 
+        -->
+        <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+        <filter class="solr.DelimitedPayloadTokenFilterFactory" 
+          delimiter="|" encoder="edu.cmu.lti.oaqa.annographix.solr.AnnotEncoder"/>
+      </analyzer>
+    </fieldtype>
+
+  </types>
+
+ <fields>   
+  <!-- general -->
+  <field name="Id"     type="string" indexed="true" stored="true"  multiValued="false" required="true"/>
+  <field name="Text4Annotation"   type="text_lc" indexed="true" stored="true"  multiValued="false" required="true" termPositions="true" termOffsets="true" /> 
+  <!-- we don't need to store these huge values -->
+  <field name="Annotation"   type="payload" indexed="true" stored="false"  multiValued="false" required="true" omitPositions="false"/> 
+  <!-- mandatory field -->
+  <field name="_version_" type="long" indexed="true" stored="true" multiValued="false"/>
+ </fields>
+
+ <!-- field to use to determine and enforce document uniqueness. -->
+ <uniqueKey>Id</uniqueKey>
+
+ <!-- field for the QueryParser to use when an explicit fieldname is absent -->
+ <defaultSearchField>Text4Annotation</defaultSearchField>
+
+ <!-- SolrQueryParser configuration: defaultOperator="AND|OR" -->
+ <solrQueryParser defaultOperator="AND"/>
+
+ <similarity class="org.apache.lucene.search.similarities.BM25Similarity" />
+</schema>
+

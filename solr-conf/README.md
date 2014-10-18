@@ -21,7 +21,7 @@ To obtain a jar file, just got to the code directory and type:
 ```
 mvn package
 ```
-and retrieve a jar from the subdirectory **target*. 
+and retrieve a jar from the subdirectory **target**. 
  
 
 

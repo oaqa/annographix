@@ -15,7 +15,7 @@ SolrIndexScripts/post.sh:      URL=http://localhost:8984/solr/annographix/update
 
 ###instance name###
 -------------------
-The name of the index is annographix. To change the name, grep config files for the occurrences of this name. You also need to change the name of the instance directory (a subdirectory of the directory indexes).
+The name of the instance is **annographix**. To change the name, grep config files for the occurrences of this name. You also need to change the name of the instance directory (a subdirectory of the directory indexes).
 
 ###jar placement###
 -------------------

@@ -15,22 +15,15 @@
  */
 package edu.cmu.lti.oaqa.annographix.apps;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.io.StringReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.lucene.analysis.util.AbstractAnalysisFactory;
 
-import edu.cmu.lti.oaqa.annographix.solr.DocumentReader;
-import edu.cmu.lti.oaqa.annographix.solr.SolrDocumentIndexer;
+import edu.cmu.lti.oaqa.annographix.solr.SolrUtils;
 import edu.cmu.lti.oaqa.annographix.util.UtilConst;
 import edu.cmu.lti.oaqa.annographix.util.XmlHelper;
 
@@ -42,17 +35,6 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-
-class ParseConfRes {
-  Map<String, String>   mTokClassAttr;
-  String                mTokClassName;
-  ParseConfRes() {
-    mTokClassName = null;
-    mTokClassAttr = new HashMap<String,String>();
-    mTokClassAttr.put(AbstractAnalysisFactory.LUCENE_MATCH_VERSION_PARAM, UtilConst.LUCENE_VERSION);
-  }
-};
-
 
 /**
  * An application that reads text files produced by an annotation
@@ -113,13 +95,15 @@ public class SolrIndexApp {
         batchQty = Integer.parseInt(cmd.getOptionValue("n"));
       }
             
-      ParseConfRes solrConf = parseConfig(solrURI);          
+      parseConfig(solrURI);  
       
+      System.out.println("Config is fine!");
+      /*
       (new DocumentReader()).readDoc(solrConf.mTokClassName, 
                                     solrConf.mTokClassAttr,
                                     docTextFile, docAnnotFile, batchQty,
                                     new SolrDocumentIndexer(solrURI));
-      
+      */
     } catch (ParseException e) {
       Usage("Cannot parse arguments");
     } catch(Exception e) {
@@ -128,47 +112,70 @@ public class SolrIndexApp {
     }    
     
   }
+  /**
+   * The function checks the following: (1) there are no omit* attributes ; 
+   * (2) all attributes from the mandAttrs list are present <em>and are set to TRUE</em>.
+   * 
+   * @param fieldName        a name of the field.
+   * @param fieldNode        an XML node representing the field.
+   * @param mandAttrs        a list of mandatory attributes.
+   * 
+   * @throws                 Exception
+   */
+  private static void checkFieldAttrs(String fieldName, Node fieldNode, String ... mandAttrs) 
+    throws Exception {
+    HashMap<String, String> attNameVals = new HashMap<String, String>();
+    
+    NamedNodeMap attrs = fieldNode.getAttributes();
+    
+    if (null == attrs) {
+      if (mandAttrs.length > 0) 
+        throw new Exception("Field: " + fieldNode.getLocalName() + 
+            " should have attributes");
+      return;
+    }
+          
+    for (int i = 0; i < attrs.getLength(); ++i) {
+      Node e = attrs.item(i);
+      String nm = e.getNodeName();
+      attNameVals.put(nm, e.getNodeValue());
+      if (nm.startsWith("omit")) {
+        throw new Exception("Field: '" + fieldName + "' " +  
+            " shouldn't have any omit* attributes");
+      }
+    }
+    for (String s: mandAttrs) {
+      if (!attNameVals.containsKey(s)) {
+        throw new Exception("Field: " + fieldName  + "' " +  
+            " should have an attribute '" + s  + "'");
+      }
+      String val = attNameVals.get(s);
+      if (val.compareToIgnoreCase("true") != 0) {
+        throw new Exception("Field: '" + fieldName + "' " +  
+            "attribute '" + s + "' should have the value 'true'");                
+      }
+    }
+  }
 
-  
-  private static ParseConfRes parseConfig(String solrURI) throws Exception {
-    ParseConfRes res = new ParseConfRes();
-    
-    // Let's figure out the tokenizer name
-    String getSchemaURI = solrURI 
-        + "/admin/file?file=schema.xml&contentType=text/xml:charset=utf-8";
-    
-    URL obj = new URL(getSchemaURI);
-    HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-    
-    // optional default is GET
-    con.setRequestMethod("GET");
- 
-    //add request header
-    con.setRequestProperty("User-Agent", UtilConst.USER_AGENT);
-    
-    int responseCode = con.getResponseCode();
-    if (responseCode != 200) {
-      System.err.println("Cannot read schema definition, using URI: " + getSchemaURI);
-    }
-    
-    BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-    String         respLine;
-    StringBuffer   resp = new StringBuffer();
- 
-    while ((respLine = in.readLine()) != null) {
-      resp.append(respLine);
-    }
-    
-    in.close();
-    
-    String respText = resp.toString();
-    
-    /*
-     *  TODO: could be re-written using org.apache.solr.schema
-     *        So, far, however, this solr class threw some exceptions :-(
-     *        It is possible that we were using it somehow incorrectly.
-     */
-    
+  /**
+   * This functions performs sanity check of a SOLR instance configuration
+   * file. We need to ensure that 1) the field that stores annotations 
+   * uses the whitespace tokenizer; 2) the annotated text field stores both
+   * offsets and positions. 
+   * <p>Ideally, one should be able to parse the config using standard
+   * SOLR class: org.apache.solr.schema.IndexSchema.
+   * However, this seems to be impossible, because the schema loader tries
+   * to read/parse all the files (e.g., a stopword file) mentioned in the schema 
+   * definition. These files are not accessible, thogh, because they clearly
+   * "sit" on a SOLR server file system. 
+   * 
+   * 
+   * @param solrURI     the URI of the SOLR instance.
+   * @throws Exception
+   */
+  private static void parseConfig(String solrURI) throws Exception {    
+    String respText = SolrUtils.getSolrSchema(solrURI);
+        
     try {
       DocumentBuilder dbld = DocumentBuilderFactory.newInstance().newDocumentBuilder();
       Document doc = dbld.parse(new InputSource(new StringReader(respText)));
@@ -177,6 +184,7 @@ public class SolrIndexApp {
       Node fields = XmlHelper.getNode("fields", root.getChildNodes());
       Node types  = XmlHelper.getNode("types", root.getChildNodes());
       
+      // Let's read which tokenizers are specified for declared field types  
       HashMap<String, String> typeTokenizers = new HashMap<String, String>();
       for (int i = 0; i < types.getChildNodes().getLength(); ++i) {
         Node oneType = types.getChildNodes().item(i);
@@ -200,18 +208,15 @@ public class SolrIndexApp {
                 typeTokenizers.put(name.toLowerCase(),  tokAttr.getNodeValue());
               else throw new Exception("No class specified for the tokenizer description, " + 
                   " type: " + name);
-              for (int k = 0; k < attrs.getLength(); ++k) {
-                Node oneAttr = attrs.item(k);
-                if (!oneAttr.getNodeName().equalsIgnoreCase("class")) {
-                  res.mTokClassAttr.put(oneAttr.getNodeName(), oneAttr.getNodeValue());
-                }
-              }
             }
-          }
-       
+          }       
         }
       }
-        
+
+      // Read a list of fields, check if they are configured properly
+      boolean annotFieldPresent = false;
+      boolean text4AnnotFieldPresent = false;
+      
       for (int i = 0; i < fields.getChildNodes().getLength(); ++i) {
         Node oneField = fields.getChildNodes().item(i);
         
@@ -222,11 +227,11 @@ public class SolrIndexApp {
         }
         
         String fieldName = nameAttr.getNodeValue();
-        
-        if (
-            fieldName.equalsIgnoreCase(UtilConst.ANNOT_FIELD) ||
-            fieldName.equalsIgnoreCase(UtilConst.TEXT4ANNOT_FIELD)
-            ) {
+
+        // This filed must be present, use the whitespace tokenizer, and index positions      
+        if (fieldName.equalsIgnoreCase(UtilConst.ANNOT_FIELD)) {
+          checkFieldAttrs(fieldName, oneField, "termPositions");
+          annotFieldPresent = true;
           Node typeAttr = oneField.getAttributes().getNamedItem("type");
           
           if (typeAttr != null) {
@@ -236,34 +241,32 @@ public class SolrIndexApp {
               throw new Exception("Cannot find the tokenizer class for the field: " 
                                    + fieldName);
             }
-            if (fieldName.equalsIgnoreCase(UtilConst.TEXT4ANNOT_FIELD)) {
-              res.mTokClassName = className;
-            } else {
-              if (!className.equals(UtilConst.ANNOT_FIELD_TOKENIZER)) {
-                throw new Exception("The field: '" + UtilConst.ANNOT_FIELD + "' " +
-                                    " should be configured to use the tokenizer: " +
-                                    UtilConst.ANNOT_FIELD_TOKENIZER);
-              }
+
+            if (!className.equals(UtilConst.ANNOT_FIELD_TOKENIZER)) {
+              throw new Exception("The field: '" + UtilConst.ANNOT_FIELD + "' " +
+                                  " should be configured to use the tokenizer: " +
+                                  UtilConst.ANNOT_FIELD_TOKENIZER);
             }
           } else {
             throw new Exception("Missing type for the annotation field: " 
                                 + fieldName);
           }
+        } else if (fieldName.equalsIgnoreCase(UtilConst.TEXT4ANNOT_FIELD)) {
+        // This field must be present, and index positions as well as offsets
+          text4AnnotFieldPresent = true;
+          checkFieldAttrs(fieldName, oneField, "termPositions", "termOffsets");
         }
       }
-      
-      
+      if (!annotFieldPresent) {
+        throw new Exception("Missing field: " + UtilConst.ANNOT_FIELD);
+      }
+      if (!text4AnnotFieldPresent) {
+        throw new Exception("Missing field: " + UtilConst.TEXT4ANNOT_FIELD);
+      }           
     } catch (SAXException e) {      
       System.err.println("Can't parse SOLR response:\n" + respText);
       throw e;
     }
-    
-    if (res.mTokClassName == null) {
-      throw new Exception("Did you explicitly configure the tokenizer for the field: " +
-                          UtilConst.TEXT4ANNOT_FIELD);
-    }
-    
-    return res;
   }
 
 

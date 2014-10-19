@@ -7,18 +7,14 @@
    <fieldType name="integer" class="solr.IntField"  omitNorms="true"/>
    <fieldType name="text_lc" class="solr.TextField" positionIncrementGap="1">
      <analyzer>
-        <!--
-        If the short version of the class doesn't work with Leo's indexing application.
-        <tokenizer class="org.apache.lucene.analysis.standard.StandardTokenizerFactory" maxTokenLength="255"/>
-        -->
        <tokenizer class="solr.StandardTokenizerFactory" maxTokenLength="255"/>
        <filter class="solr.LowerCaseFilterFactory" />
        <filter class="solr.StopFilterFactory" words="stopwords.txt" ignoreCase="true"/> 
        <!-- let's use a good stemmer here -->
        <filter class="solr.HunspellStemFilterFactory"
-              dictionary="en_US.dic"
-              affix="en_US.aff"
-              ignoreCase="true" 
+                dictionary="en_US.dic"
+                affix="en_US.aff"
+                ignoreCase="true" 
        />
      </analyzer>
    </fieldType>
@@ -40,8 +36,7 @@
   <!-- general -->
   <field name="Id"     type="string" indexed="true" stored="true"  multiValued="false" required="true"/>
   <field name="Text4Annotation"   type="text_lc" indexed="true" stored="true"  multiValued="false" required="true" termPositions="true" termOffsets="true" /> 
-  <!-- we don't need to store these huge values -->
-  <field name="Annotation"   type="payload" indexed="true" stored="false"  multiValued="false" required="true" omitPositions="false"/> 
+  <field name="Annotation"   type="payload" indexed="true" stored="false"  multiValued="false" required="true" termPositions="true"/> 
   <!-- mandatory field -->
   <field name="_version_" type="long" indexed="true" stored="true" multiValued="false"/>
  </fields>

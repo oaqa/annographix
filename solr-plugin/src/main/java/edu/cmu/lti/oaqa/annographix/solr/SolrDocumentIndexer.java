@@ -59,7 +59,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
     mDocBuilder           = mDocFactory.newDocumentBuilder();
     mTransformerFactory   = TransformerFactory.newInstance();
     mTransformer          = mTransformerFactory.newTransformer();
-    mTargetServer         = new SolrWrapperMod(solrURI);
+    mTargetServer         = new SolrUtils(solrURI);
   }
   
   /**
@@ -429,7 +429,8 @@ public class SolrDocumentIndexer implements DocumentIndexer {
   private DocumentBuilder         mDocBuilder;
   private TransformerFactory      mTransformerFactory;
   private Transformer             mTransformer;
-  private SolrWrapperMod          mTargetServer;
+  
+  private SolrUtils               mTargetServer;
   private Document                mBatchXML = null;
   private Element                 mAddNode = null;
 }

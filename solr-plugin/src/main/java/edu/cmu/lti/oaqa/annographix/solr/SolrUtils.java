@@ -17,16 +17,16 @@
 package edu.cmu.lti.oaqa.annographix.solr;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.*;
 import org.apache.solr.client.solrj.SolrRequest.METHOD;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
 import org.apache.solr.client.solrj.impl.HttpSolrServer;
 import org.apache.solr.client.solrj.request.DirectXmlRequest;
 import org.apache.solr.client.solrj.response.QueryResponse;
@@ -34,6 +34,8 @@ import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.SolrInputField;
+
+import edu.cmu.lti.oaqa.annographix.util.HttpHelper;
 
 /**
  * This is a simplified and re-worked version of SolrWrapper from:
@@ -59,14 +61,11 @@ import org.apache.solr.common.SolrInputField;
  * @author Leonid Boytsov (modified, see the comment above)
  * 
  */
-public final class SolrWrapperMod implements Closeable {
+public final class SolrUtils implements Closeable {
 	private final SolrServer server;
 
-	boolean embedded;
-
-	public SolrWrapperMod(String serverUrl) throws Exception{
+	public SolrUtils(String serverUrl) throws Exception{
 	  this.server=createSolrServer(serverUrl);
-	  this.embedded = false;
 	}
 
 	private SolrServer createSolrServer(String url) throws Exception {
@@ -137,12 +136,6 @@ public final class SolrWrapperMod implements Closeable {
 		return term;
 	}
 
-	public void close() {
-		if (embedded) {
-			((EmbeddedSolrServer) server).shutdown();
-		}
-	}
-
 	/**
     * Create a solr document for indexing from key-value (field name, field value) pairs.
     */
@@ -168,6 +161,20 @@ public final class SolrWrapperMod implements Closeable {
 
 		return doc;
 
+	}
+	
+	public static String getSolrConfig(String solrURI) throws Exception {
+	  String getConfigURI = solrURI 
+	      + "/admin/file/?contentType=text/xml;charset=utf-8&file=solrconfig.xml";
+	  
+	  return HttpHelper.get(getConfigURI);
+	}
+	
+	public static String getSolrSchema(String solrURI) throws Exception {
+      String getSchemaURI = solrURI 
+          + "/admin/file?file=schema.xml&contentType=text/xml:charset=utf-8";
+
+      return HttpHelper.get(getSchemaURI);
 	}
 	
 	/**
@@ -221,4 +228,9 @@ public final class SolrWrapperMod implements Closeable {
 		
 		server.deleteByQuery(query);
 	}
+
+  @Override
+  public void close() throws IOException {
+    // Nothing to do here, just a stub
+  }
 }

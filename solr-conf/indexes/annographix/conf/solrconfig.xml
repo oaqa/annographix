@@ -30,7 +30,7 @@
 
     https://issues.apache.org/jira/browse/SOLR-5708
   -->
-  <!--lib path="plugins/annographix-2.0.0-SNAPSHOT.jar" /-->
+  <!--lib path="plugins/annographix-3.0-SNAPSHOT.jar" /-->
 
   <updateHandler class="solr.DirectUpdateHandler2">
     <autoCommit>

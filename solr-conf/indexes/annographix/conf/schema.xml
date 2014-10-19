@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <!-- This is a minimal configuration -->
-<schema name="annographix" version="2.0">
+<schema name="annographix" version="3.0">
   <types>
    <fieldtype name="string"  class="solr.StrField"  sortMissingLast="true" omitNorms="true"/>
    <fieldType name="long"    class="solr.LongField" omitNorms="true"/>

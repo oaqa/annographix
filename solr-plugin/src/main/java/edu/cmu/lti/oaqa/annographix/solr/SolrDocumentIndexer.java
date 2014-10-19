@@ -163,11 +163,10 @@ public class SolrDocumentIndexer implements DocumentIndexer {
        * length. They don't correspond to any real span of text. 
        */
       if (e.mCharLen > 0) {
-        // Remove chars that may choke payload parser
+        // Remove chars that may stump payload parser
         annotText = UtilConst.preparePayloadToken(
             docText.substring(e.mStartChar, e.mStartChar + e.mCharLen));
         
-
       
         itStart = charToWordPos.lowerEntry(e.mStartChar+1);
   

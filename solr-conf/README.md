@@ -39,3 +39,10 @@ ln -s /usr/share/hunspell/en_US.dic
 ```
 Alternatively, one can disable Hunspell stemmer in the config and/or use any other stemmer instead.
 
+###storing the values text fields###
+-------------------
+The template configs indicates that text fields should be stored (i.e., their original values should be memorized). This requires extra storage, but allows one to easily rename field names:
+
+http://searchivarius.org/blog/how-rename-fields-solr
+
+To save space, set the value of the attribute **stored** to false.

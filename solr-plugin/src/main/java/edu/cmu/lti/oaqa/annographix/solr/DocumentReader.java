@@ -17,23 +17,10 @@
 package edu.cmu.lti.oaqa.annographix.solr;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Map;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.util.TokenizerFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import edu.cmu.lti.oaqa.annographix.util.CompressUtils;
@@ -49,17 +36,19 @@ import edu.cmu.lti.oaqa.annographix.util.XmlHelper;
  */
 public class DocumentReader {
   /**
+   * Reads documents and annotations from respective text files.
+   * 
    * @param docTextFile   file with documents, 
    *                       one document in Indri format, 
-   *                       inside <DOC>...</DOC>.  
+   *                       inside &lt;DOC&gt;...&lt;/DOC&gt;.
+   *                         
    * @param docAnnotFile  file with annotations in Indri format.
    * @param batchQty      a batch size.
-   * @param obj           an indexing object.
+   * @param obj           a document consumer (e.g., it reads files and 
+   *                      indexes them in SOLR).
    * @throws Exception 
    */
   public void readDoc(
-                 String tokClassName,
-                 Map<String,String> tokClassAttrs,
                  String docTextFile, 
                  String docAnnotFile, 
                  int batchQty, 
@@ -72,59 +61,6 @@ public class DocumentReader {
     
     AnnotationEntry prevEntry = null;
     
-    /*
-     * 
-     * Here we try to re-write a tokenizer name to
-     * a short form, which is used internally by Solr.
-     * Sadly, @Leo couldn't find a standard an API
-     * function to do so. Anyways, when this rewriting code
-     * fails, one can specify the fully-qualified class name
-     * in the SOLR schema file. 
-     *
-     * For instance, instead of 
-      <tokenizer class="solr.StandardTokenizerFactory" maxTokenLength="255"/>
-     * one can specify:
-      <tokenizer 
-          class="org.apache.lucene.analysis.standard.StandardTokenizerFactory" 
-          maxTokenLength="255"
-      />
-     *
-     *
-     */  
-    
-    TokenizerFactory tokStreamFactory = null;
-
-    String prefix = "solr.";
-    String suffix = "TokenizerFactory";
-
-    boolean bIsWhiteSpaceTokenizer = tokClassName.contains("WhitespaceTokenizerFactory");    
-    
-    if (tokClassName.startsWith(prefix) && 
-        tokClassName.endsWith(suffix)) {
-    /*
-     * If it is a standard SOLR name, let's try to rewrite the class
-     * using the rewriting convention.
-     */ 
-        
-      tokClassName = tokClassName.substring(prefix.length());
-      tokClassName = tokClassName.substring(0, tokClassName.length() - suffix.length());
-      tokClassName = tokClassName.toLowerCase();
-      
-      tokStreamFactory = (TokenizerFactory)TokenizerFactory.forName(tokClassName, tokClassAttrs);
-    } else {
-    // Load by full class name
-      tokStreamFactory = (TokenizerFactory)Class.forName(tokClassName)
-              .asSubclass(TokenizerFactory.class).getConstructor(Map.class)
-              .newInstance(tokClassAttrs);
-    }
-      
-    
-
-    if (tokStreamFactory == null)
-      throw new Exception("Cannot load class: " + tokClassName);
-
-    Tokenizer tokStream = null; 
-   
     String docText = XmlHelper.readNextXMLIndexEntry(inpText);
     
     XmlHelper xmlHlp = new XmlHelper();
@@ -133,7 +69,7 @@ public class DocumentReader {
          docText!= null; 
          ++docNum, docText = XmlHelper.readNextXMLIndexEntry(inpText)) {
       
-      // 1. Read the document text
+      // 1. Read document text
       Map<String, String> docFields = null;
             
       try {
@@ -143,10 +79,6 @@ public class DocumentReader {
         throw new Exception("Parsing error.");
       }
 
-      /*
-       * Note the final here: we shouldn't modify a document string here, 
-       * such changes may screw annotation offsets!
-       */
       String docText4Anot = docFields.get(UtilConst.TEXT4ANNOT_FIELD); 
           
       if (docText4Anot == null) {
@@ -204,13 +136,9 @@ public class DocumentReader {
       
       /*
        *  3. pass a parsed document + annotation to the indexer
-       *  NOTE: reusing tokStream, originally tokStream is NULL,
-       *        consume document will create it during the first call.
        */
       
-      tokStream = obj.consumeDocument(bIsWhiteSpaceTokenizer, 
-                          tokStreamFactory, tokStream, 
-                          docFields, annots);
+      obj.consumeDocument(docFields, annots);
       
       if (docNum % batchQty == 0) obj.sendBatch();
     }

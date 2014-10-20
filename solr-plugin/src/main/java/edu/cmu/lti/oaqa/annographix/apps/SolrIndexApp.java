@@ -17,12 +17,15 @@ package edu.cmu.lti.oaqa.annographix.apps;
 
 import java.io.StringReader;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import edu.cmu.lti.oaqa.annographix.solr.DocumentReader;
+import edu.cmu.lti.oaqa.annographix.solr.SolrDocumentIndexer;
 import edu.cmu.lti.oaqa.annographix.solr.SolrUtils;
 import edu.cmu.lti.oaqa.annographix.util.UtilConst;
 import edu.cmu.lti.oaqa.annographix.util.XmlHelper;
@@ -98,12 +101,11 @@ public class SolrIndexApp {
       parseConfig(solrURI);  
       
       System.out.println("Config is fine!");
-      /*
-      (new DocumentReader()).readDoc(solrConf.mTokClassName, 
-                                    solrConf.mTokClassAttr,
+      
+      (new DocumentReader()).readDoc(
                                     docTextFile, docAnnotFile, batchQty,
                                     new SolrDocumentIndexer(solrURI));
-      */
+      
     } catch (ParseException e) {
       Usage("Cannot parse arguments");
     } catch(Exception e) {
@@ -113,46 +115,52 @@ public class SolrIndexApp {
     
   }
   /**
-   * The function checks the following: (1) there are no omit* attributes ; 
-   * (2) all attributes from the mandAttrs list are present <em>and are set to TRUE</em>.
+   * The function checks the following: (1) there are no omit* attributes except
+   * from those that match a key from the provided key-value pair map ; 
+   * (2) The key-value pair map defines mandatory attributes and their values.
    * 
    * @param fieldName        a name of the field.
    * @param fieldNode        an XML node representing the field.
-   * @param mandAttrs        a list of mandatory attributes.
+   * @param mandAttrKeyVal   a key-value pair map of mandatory attributes.
    * 
    * @throws                 Exception
    */
-  private static void checkFieldAttrs(String fieldName, Node fieldNode, String ... mandAttrs) 
+  private static void checkFieldAttrs(String fieldName, Node fieldNode, 
+                                      HashMap<String, String> mandAttrKeyVal) 
     throws Exception {
-    HashMap<String, String> attNameVals = new HashMap<String, String>();
+    HashMap<String, String> attKeyVal = new HashMap<String, String>();
     
     NamedNodeMap attrs = fieldNode.getAttributes();
     
     if (null == attrs) {
-      if (mandAttrs.length > 0) 
+      if (!mandAttrKeyVal.isEmpty()) 
         throw new Exception("Field: " + fieldNode.getLocalName() + 
             " should have attributes");
       return;
     }
           
+    // All omit* attributes are disallowed unless they are explicitly allowed
     for (int i = 0; i < attrs.getLength(); ++i) {
       Node e = attrs.item(i);
       String nm = e.getNodeName();
-      attNameVals.put(nm, e.getNodeValue());
-      if (nm.startsWith("omit")) {
-        throw new Exception("Field: '" + fieldName + "' " +  
-            " shouldn't have any omit* attributes");
+      attKeyVal.put(nm, e.getNodeValue());
+      if (nm.startsWith("omit") && !mandAttrKeyVal.containsKey(nm)) {
+        throw new Exception("Unexpected attribute, field: '" + fieldName + "' " +  
+            " shouldn't have the attribute '" + nm + "'");
       }
     }
-    for (String s: mandAttrs) {
-      if (!attNameVals.containsKey(s)) {
-        throw new Exception("Field: " + fieldName  + "' " +  
-            " should have an attribute '" + s  + "'");
+    for (Map.Entry<String, String> e: mandAttrKeyVal.entrySet()) {
+      String key = e.getKey();
+      if (!attKeyVal.containsKey(key)) {
+        throw new Exception("Missing attribute, field: " + fieldName  + "' " +  
+            " should have an attribute '" + key  + 
+            "' value: '" + e.getValue() + "'");
       }
-      String val = attNameVals.get(s);
-      if (val.compareToIgnoreCase("true") != 0) {
-        throw new Exception("Field: '" + fieldName + "' " +  
-            "attribute '" + s + "' should have the value 'true'");                
+      String expVal = e.getValue();
+      String val = attKeyVal.get(key);
+      if (val.compareToIgnoreCase(expVal) != 0) {
+        throw new Exception("Wrong attribute value, field: '" + fieldName + "' " +  
+            "attribute '" + key + "' should have the value '"+expVal+"'");                
       }
     }
   }
@@ -230,7 +238,9 @@ public class SolrIndexApp {
 
         // This filed must be present, use the whitespace tokenizer, and index positions      
         if (fieldName.equalsIgnoreCase(UtilConst.ANNOT_FIELD)) {
-          checkFieldAttrs(fieldName, oneField, "termPositions");
+          HashMap<String,String> attrVals = new HashMap<String,String>();
+          attrVals.put("omitPositions", "false");
+          checkFieldAttrs(fieldName, oneField, attrVals);
           annotFieldPresent = true;
           Node typeAttr = oneField.getAttributes().getNamedItem("type");
           
@@ -254,7 +264,10 @@ public class SolrIndexApp {
         } else if (fieldName.equalsIgnoreCase(UtilConst.TEXT4ANNOT_FIELD)) {
         // This field must be present, and index positions as well as offsets
           text4AnnotFieldPresent = true;
-          checkFieldAttrs(fieldName, oneField, "termPositions", "termOffsets");
+          HashMap<String,String> attrVals = new HashMap<String,String>();
+          attrVals.put("omitPositions", "false");
+          attrVals.put("storeOffsetsWithPositions", "true");
+          checkFieldAttrs(fieldName, oneField, attrVals);
         }
       }
       if (!annotFieldPresent) {

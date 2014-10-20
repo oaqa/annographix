@@ -19,9 +19,6 @@ package edu.cmu.lti.oaqa.annographix.solr;
 import java.util.ArrayList;
 import java.util.Map;
 
-import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.util.TokenizerFactory;
-
 /**
  * 
  * A generic interface for an indexing class, 
@@ -31,9 +28,14 @@ import org.apache.lucene.analysis.util.TokenizerFactory;
  *
  */
 public interface DocumentIndexer {
-  Tokenizer consumeDocument(boolean bIsWhiteSpaceTokenizer,
-                       TokenizerFactory tokStreamFactory,
-                       Tokenizer tokStream,
+  /**
+   * 
+   * @param docFields   Pairs: (field name, field text).
+   * @param annots      The list of annotations for the annotated field.
+   * 
+   * @throws Exception
+   */
+  void consumeDocument(
                        Map<String, String> docFields,
                        ArrayList<AnnotationEntry> annots) throws Exception;
   void sendBatch() throws Exception;

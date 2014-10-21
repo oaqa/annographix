@@ -17,6 +17,7 @@ package edu.cmu.lti.oaqa.annographix.solr;
 
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -33,18 +34,30 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+/**
+ * 
+ * This is a helper class that reads annotated documents and
+ * submit indexing requests to a SOLR server.
+ * 
+ * @author Leonid Boytsov
+ * 
+ */
 public class SolrDocumentIndexer implements DocumentIndexer {
   private static final boolean DEBUG_PRINT = false;
 
   /**
    * 
-   * This is a helper class that reads annotated documents and
-   * submit indexing requests to a SOLR server.
-   * 
-   * @author Leonid Boytsov
-   * 
+   * @param solrURI     an address of the server that includes the core, e.g., http://localhost:8984/solr/AQUAINT
+   * @param textField   a name of the annotated text field.
+   * @param annotField  a name of the annotation field to store annotations for textField.
+   * @throws Exception
    */
-  public SolrDocumentIndexer(String solrURI) throws Exception {
+  public SolrDocumentIndexer(String solrURI, 
+                             String textField, 
+                             String annotField) throws Exception {
+    mTextFieldName = textField;
+    mAnnotFieldName = annotField;
+    
     mDocFactory           = DocumentBuilderFactory.newInstance();
     mDocFactory.setValidating(false);
     mDocBuilder           = mDocFactory.newDocumentBuilder();
@@ -52,15 +65,42 @@ public class SolrDocumentIndexer implements DocumentIndexer {
     mTransformer          = mTransformerFactory.newTransformer();
     mTargetServer         = new SolrUtils(solrURI);
   }
-  
-  /**
-   * @see DocumentIndexer.consumeDocument
-   */
+
+
   @Override
+  /**
+   * The function indexes provided SOLR documents. It assumes that
+   * annotations have the same document no/id and are sorted.
+   * 
+   * @param docFields   Pairs: (field name, field text).
+   * @param annots      The list of annotations for the annotated field.
+   * 
+   * @throws Exception 
+   * 
+   */
   public void consumeDocument(Map<String, String> docFields,
-                              ArrayList<AnnotationEntry> annots) 
-                              throws Exception{
-    String origDocText = docFields.get(UtilConst.TEXT4ANNOT_FIELD);
+                              AnnotationEntry[]  annots) 
+                              throws Exception{  
+    /*
+     * Check if the array annots is valid:
+     * 1) Annotations should be sorted.
+     * 2) She should all represent the same document number.
+     */
+ 
+    for  (int i = 1; i< annots.length; ++i) {
+      AnnotationEntry prevAnnot = annots[i-1],
+                      currAnnot = annots[i];
+      if (!prevAnnot.mDocNo.equals(currAnnot.mDocNo)) {
+        throw new Exception(String.format("Bug: docnos different, i=%d, prev='%s', curr='%s'",
+                                          i, prevAnnot.mDocNo, currAnnot.mDocNo));
+      }
+      if (prevAnnot.compareTo(currAnnot) > 0) {
+        throw new Exception(String.format("Bug: sortedness violation, i=%d, docNo='%s'",
+                                          i, prevAnnot.mDocNo));
+      }
+    }
+    
+    String origDocText = docFields.get(mTextFieldName);
     String docNo       = docFields.get(UtilConst.INDEX_DOCNO);
     
     final String docText = UtilConst.
@@ -99,13 +139,13 @@ public class SolrDocumentIndexer implements DocumentIndexer {
      * properly. Here, we will only stem keywords stored with
      * annotations.
      */
-    addField(oneDoc, UtilConst.TEXT4ANNOT_FIELD, docText);
+    addField(oneDoc, mTextFieldName, docText);
     
     for (Entry<String, String> e: docFields.entrySet()) {
       String key = e.getKey(), value = e.getValue();
       if (!key.equalsIgnoreCase(UtilConst.ID_FIELD) &&
           !key.equalsIgnoreCase(UtilConst.INDEX_DOCNO) &&
-          !key.equalsIgnoreCase(UtilConst.TEXT4ANNOT_FIELD)) {
+          !key.equalsIgnoreCase(mTextFieldName)) {
         addField(oneDoc, key, value);
       }
     }
@@ -116,13 +156,19 @@ public class SolrDocumentIndexer implements DocumentIndexer {
     
     for (AnnotationEntry e: annots) {
       // Replace potential occurrences of the payload char
-      String annotLabel = UtilConst.removeBadUnicode(e.mLabel.
-                                       replace(UtilConst.PAYLOAD_CHAR, ' '));
+      String annotLabel = UtilConst.removeBadUnicode(e.mLabel);
+      
+      if (annotLabel.indexOf(UtilConst.PAYLOAD_CHAR) >= 0) {
+        throw new Exception("docNo = " + docNo + " annotation labels shouldn't " +
+                            " annotation id: " + e.mAnnotId +       
+                            " contain symbols '" + UtilConst.PAYLOAD_CHAR + "'" +
+                            " offending annotation label: '" + e.mLabel + "'");
+      }
         
       createPayloadStr(annotString,
           e,
           e.mStartChar,
-          e.mStartChar + Math.max(e.mCharLen - 1,0),
+          e.mStartChar + e.mCharLen,
           /*
            *  Let's hardwire lowercasing of annotation labels,
            *  we do the same in a query plugin. 
@@ -131,7 +177,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
       );                
     }
     
-    addField(oneDoc, UtilConst.ANNOT_FIELD, annotString.toString()); 
+    addField(oneDoc, mAnnotFieldName, annotString.toString()); 
     
     mAddNode.appendChild(FragRoot);    
   }
@@ -221,6 +267,9 @@ public class SolrDocumentIndexer implements DocumentIndexer {
     mBatchXML = null;
     mAddNode = null;
   }
+  
+  private String                  mTextFieldName;
+  private String                  mAnnotFieldName;
   
   private DocumentBuilderFactory  mDocFactory;
   private DocumentBuilder         mDocBuilder;

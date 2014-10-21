@@ -17,13 +17,20 @@
 package edu.cmu.lti.oaqa.annographix.solr;
 
 /**
- * This is an auxiliary class to keep data retrieved from a payload.
+ * This is an auxiliary class to keep annotation/token data.
  * 
  *  @author Leonid Boytsov
  */
-public class PayloadData {
-  public int mWordStartPos;
-  public int mWordEndPos;
-  public int mAnnotId;
+public class ElemInfoData {
+  /** zero-based start offset. */
+  public int mStartOffset;
+  /** zero-based offset of the first character after this token/annotation. */
+  public int mEndOffset;
+  /** current id (annotation only). */
+  public int mId;
+  /** parent id (annotation only.) */
   public int mParentId;
+  public ElemInfoData() {
+    mStartOffset = mEndOffset = mId = mParentId = -1;
+  }
 }

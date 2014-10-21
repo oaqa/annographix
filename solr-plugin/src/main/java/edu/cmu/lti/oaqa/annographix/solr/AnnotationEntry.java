@@ -25,7 +25,7 @@ package edu.cmu.lti.oaqa.annographix.solr;
  * @author Leonid Boytsov
  *
  */
-public class AnnotationEntry {
+public class AnnotationEntry implements Comparable<AnnotationEntry> {
   public AnnotationEntry(String docNo, 
                          int annotId, int parentId, 
                          String label, 
@@ -58,4 +58,16 @@ public class AnnotationEntry {
   public String     mLabel;
   public int        mStartChar;
   public int        mCharLen;
+  
+  @Override
+  public int compareTo(AnnotationEntry o) {
+    if (!mDocNo.equals(o.mDocNo)) {
+      return mDocNo.compareTo(o.mDocNo);
+    }
+    if (mStartChar != o.mStartChar) {
+      return mStartChar - o.mStartChar;
+    }
+    // If the current object has smaller size, it would go earlier
+    return mCharLen - o.mCharLen;
+  }
 }

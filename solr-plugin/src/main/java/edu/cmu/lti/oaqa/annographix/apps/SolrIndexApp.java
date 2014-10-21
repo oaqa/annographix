@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
@@ -53,6 +54,8 @@ import org.xml.sax.SAXException;
  *
  */
 public class SolrIndexApp {
+  public static String TEXT_FIELD_ARG = "textField";
+  public static String ANNOT_FIELD_ARG = "annotField";
   
   static void Usage(String err) {
     System.err.println("Error: " + err);
@@ -70,6 +73,19 @@ public class SolrIndexApp {
     options.addOption("a", null, true, "Annotation File");
     options.addOption("u", null, true, "Solr URI");
     options.addOption("n", null, true, "Batch size");
+    options.addOption(OptionBuilder
+                        .withLongOpt(TEXT_FIELD_ARG)
+                        .withDescription("Text field name")
+                        .hasArg()
+                          .create()
+                      );
+    options.addOption(OptionBuilder
+                        .withLongOpt(ANNOT_FIELD_ARG)
+                        .withDescription("Annotation field name")
+                        .hasArg()
+                          .create()
+                      );    
+
 
     CommandLineParser parser = new org.apache.commons.cli.GnuParser(); 
     
@@ -97,15 +113,31 @@ public class SolrIndexApp {
       if (cmd.hasOption("n")) {
         batchQty = Integer.parseInt(cmd.getOptionValue("n"));
       }
-            
-      parseConfig(solrURI);  
+      
+      String textFieldName  = UtilConst.DEFAULT_TEXT4ANNOT_FIELD;
+      String annotFieldName = UtilConst.DEFAULT_ANNOT_FIELD;
+      
+      if (cmd.hasOption(TEXT_FIELD_ARG)) {
+        textFieldName = cmd.getOptionValue(TEXT_FIELD_ARG);
+      }
+      if (cmd.hasOption(ANNOT_FIELD_ARG)) {
+        annotFieldName = cmd.getOptionValue(ANNOT_FIELD_ARG);
+      }
+      
+      System.out.println(String.format(
+                            "Annotated text field: '%s', annotation field: '%s'",
+                            textFieldName, annotFieldName));
+
+      parseConfig(solrURI, textFieldName, annotFieldName);  
       
       System.out.println("Config is fine!");
       
-      (new DocumentReader()).readDoc(
-                                    docTextFile, docAnnotFile, batchQty,
-                                    new SolrDocumentIndexer(solrURI));
-      
+      DocumentReader.readDoc(docTextFile, textFieldName, 
+                            docAnnotFile, batchQty,
+                            new SolrDocumentIndexer(solrURI, 
+                                                    textFieldName,
+                                                    annotFieldName));
+  
     } catch (ParseException e) {
       Usage("Cannot parse arguments");
     } catch(Exception e) {
@@ -174,14 +206,18 @@ public class SolrIndexApp {
    * SOLR class: org.apache.solr.schema.IndexSchema.
    * However, this seems to be impossible, because the schema loader tries
    * to read/parse all the files (e.g., a stopword file) mentioned in the schema 
-   * definition. These files are not accessible, thogh, because they clearly
+   * definition. These files are not accessible, though, because they clearly
    * "sit" on a SOLR server file system. 
    * 
    * 
-   * @param solrURI     the URI of the SOLR instance.
+   * @param solrURI         a URI of the SOLR instance.
+   * @param textFieldName   a name of the text field to be annotated.
+   * @param annotFieldName  a name of the field to store annotations.
    * @throws Exception
    */
-  private static void parseConfig(String solrURI) throws Exception {    
+  private static void parseConfig(String solrURI, 
+                                  String textFieldName,
+                                  String annotFieldName) throws Exception {    
     String respText = SolrUtils.getSolrSchema(solrURI);
         
     try {
@@ -237,7 +273,7 @@ public class SolrIndexApp {
         String fieldName = nameAttr.getNodeValue();
 
         // This filed must be present, use the whitespace tokenizer, and index positions      
-        if (fieldName.equalsIgnoreCase(UtilConst.ANNOT_FIELD)) {
+        if (fieldName.equalsIgnoreCase(annotFieldName)) {
           HashMap<String,String> attrVals = new HashMap<String,String>();
           attrVals.put("omitPositions", "false");
           checkFieldAttrs(fieldName, oneField, attrVals);
@@ -253,7 +289,7 @@ public class SolrIndexApp {
             }
 
             if (!className.equals(UtilConst.ANNOT_FIELD_TOKENIZER)) {
-              throw new Exception("The field: '" + UtilConst.ANNOT_FIELD + "' " +
+              throw new Exception("The field: '" + annotFieldName + "' " +
                                   " should be configured to use the tokenizer: " +
                                   UtilConst.ANNOT_FIELD_TOKENIZER);
             }
@@ -261,7 +297,7 @@ public class SolrIndexApp {
             throw new Exception("Missing type for the annotation field: " 
                                 + fieldName);
           }
-        } else if (fieldName.equalsIgnoreCase(UtilConst.TEXT4ANNOT_FIELD)) {
+        } else if (fieldName.equalsIgnoreCase(textFieldName)) {
         // This field must be present, and index positions as well as offsets
           text4AnnotFieldPresent = true;
           HashMap<String,String> attrVals = new HashMap<String,String>();
@@ -271,10 +307,10 @@ public class SolrIndexApp {
         }
       }
       if (!annotFieldPresent) {
-        throw new Exception("Missing field: " + UtilConst.ANNOT_FIELD);
+        throw new Exception("Missing field: " + annotFieldName);
       }
       if (!text4AnnotFieldPresent) {
-        throw new Exception("Missing field: " + UtilConst.TEXT4ANNOT_FIELD);
+        throw new Exception("Missing field: " + textFieldName);
       }           
     } catch (SAXException e) {      
       System.err.println("Can't parse SOLR response:\n" + respText);

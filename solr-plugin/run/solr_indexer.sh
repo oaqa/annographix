@@ -14,8 +14,18 @@ if [ "$uri" = "" ] ; then
   echo "Specify uri (3d arg)"
   exit 1
 fi
-batchQty=""
-if [ "$4" != "" ] ; then
-  batchQty=" -n $4 "
+textField=$4
+if [ "$textField" = "" ] ; then
+  echo "Specify textField (4th arg)"
+  exit 1
 fi
-mvn compile exec:java -Dexec.mainClass=edu.cmu.lti.oaqa.annographix.apps.SolrIndexApp  -Dexec.args="-t $text -a $annot -u $uri $batchQty"
+annotField=$5
+if [ "$annotField" = "" ] ; then
+  echo "Specify annotField (5th arg)"
+  exit 1
+fi
+batchQty=""
+if [ "$6" != "" ] ; then
+  batchQty=" -n $6 "
+fi
+mvn compile exec:java -Dexec.mainClass=edu.cmu.lti.oaqa.annographix.apps.SolrIndexApp  -Dexec.args="-t $text -a $annot -u $uri -textField $textField -annotField $annotField $batchQty"

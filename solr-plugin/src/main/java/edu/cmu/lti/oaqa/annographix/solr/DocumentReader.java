@@ -19,6 +19,7 @@ package edu.cmu.lti.oaqa.annographix.solr;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 
 import org.xml.sax.SAXException;
@@ -43,13 +44,15 @@ public class DocumentReader {
    *                       inside &lt;DOC&gt;...&lt;/DOC&gt;.
    *                         
    * @param docAnnotFile  file with annotations in Indri format.
+   * @param textFieldName a name of the text field.
    * @param batchQty      a batch size.
    * @param obj           a document consumer (e.g., it reads files and 
    *                      indexes them in SOLR).
    * @throws Exception 
    */
-  public void readDoc(
-                 String docTextFile, 
+  public static void readDoc(
+                 String docTextFile,
+                 String textFieldName,
                  String docAnnotFile, 
                  int batchQty, 
                  DocumentIndexer obj) 
@@ -79,7 +82,7 @@ public class DocumentReader {
         throw new Exception("Parsing error.");
       }
 
-      String docText4Anot = docFields.get(UtilConst.TEXT4ANNOT_FIELD); 
+      String docText4Anot = docFields.get(textFieldName); 
           
       if (docText4Anot == null) {
         System.err.println("Parsing error, offending DOC:\n" + docText);
@@ -96,7 +99,7 @@ public class DocumentReader {
 
       
       // 2. Read document annotations
-      ArrayList<AnnotationEntry> annots = new ArrayList<AnnotationEntry>();
+      ArrayList<AnnotationEntry> annotList = new ArrayList<AnnotationEntry>();
       
       
       while (prevEntry == null || prevEntry.mDocNo.equals(docno)) {
@@ -115,7 +118,7 @@ public class DocumentReader {
         }
         
         if (prevEntry.mDocNo.equals(docno)) {
-          annots.add(prevEntry);
+          annotList.add(prevEntry);
         } 
         
         /*
@@ -137,6 +140,12 @@ public class DocumentReader {
       /*
        *  3. pass a parsed document + annotation to the indexer
        */
+      
+      AnnotationEntry[] annots = new AnnotationEntry[annotList.size()];
+      for (int i = 0; i < annots.length; ++i)
+        annots[i] = annotList.get(i);
+      // we must short annotations
+      Arrays.sort(annots);
       
       obj.consumeDocument(docFields, annots);
       

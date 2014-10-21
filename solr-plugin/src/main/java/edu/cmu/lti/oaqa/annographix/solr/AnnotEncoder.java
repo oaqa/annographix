@@ -26,7 +26,7 @@ import edu.cmu.lti.oaqa.annographix.util.UtilConst;
 /**
  *  Encode annotation-related information as a {@link BytesRef}.
  *  This information includes the following comma-separated values:
- *  (word) position, id, and parent id.
+ *  start offset, end offset, id, parent id.
  * <p/>
  * See {@link org.apache.lucene.analysis.payloads.PayloadHelper#encodeInt(int, byte[], int)}.
  * 
@@ -49,9 +49,9 @@ public class AnnotEncoder extends AbstractEncoder
         else if (2 == sepQty) sep2pos = i;
         else if (3 == sepQty) sep3pos = i;
         else {
+ // TODO: make the logging work, for some reason I wasn't able to access SOLR logger from this function          
  //       String errData = new String(buffer, offset, length);
-//        // TODO: make the logging work
-//        System.err.println("Cannot parse payload: " + errData);
+ //       System.err.println("Cannot parse payload: " + errData);
           throw new IllegalArgumentException();
         }
       }
@@ -62,7 +62,7 @@ public class AnnotEncoder extends AbstractEncoder
                                            sep2pos - sep1pos - 1);
     int annotId      = ArrayUtil.parseInt(buffer, offset + sep2pos+1, 
                                            sep3pos - sep2pos - 1);    
-    int parentId      = ArrayUtil.parseInt(buffer, offset + sep3pos+1, 
+    int parentId     = ArrayUtil.parseInt(buffer, offset + sep3pos+1, 
                                            length - sep3pos-1);
     
     
@@ -77,21 +77,21 @@ public class AnnotEncoder extends AbstractEncoder
    *  Decodes payload data.
    *  
    *  @param buffer   A buffer that stores encoded payload data.
-   *  @param res      A result variable, to prevent unnecessary 
+   *  @param res      A result variable: To prevent unnecessary 
    *                  memory allocations re-use the same variable
    *                  among multiple calls to this function.
    */
   public static void decode(BytesRef buffer, 
-                            PayloadData res /* reuse this variable */) {
+                            ElemInfoData res /* reuse this variable */) {
     byte[] bytes = buffer.bytes;
     int offset = buffer.offset;
-    res.mWordStartPos = PayloadHelper.decodeInt(bytes, offset);
+    res.mStartOffset = PayloadHelper.decodeInt(bytes, offset);
     offset += 4;
-    res.mWordEndPos   = PayloadHelper.decodeInt(bytes, offset);
+    res.mEndOffset   = PayloadHelper.decodeInt(bytes, offset);
     offset += 4;
-    res.mAnnotId      = PayloadHelper.decodeInt(bytes, offset);
+    res.mId          = PayloadHelper.decodeInt(bytes, offset);
     offset += 4;
-    res.mParentId     = PayloadHelper.decodeInt(bytes, offset);
+    res.mParentId    = PayloadHelper.decodeInt(bytes, offset);
   }
 }
 

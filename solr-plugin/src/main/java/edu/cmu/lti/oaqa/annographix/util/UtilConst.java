@@ -36,7 +36,7 @@ public class UtilConst {
   /**
    * The name of the field with annotations (in SOLR).
    */
-  public static final String ANNOT_FIELD = "Annotation";
+  public static final String DEFAULT_ANNOT_FIELD = "Annotation";
   /**
    * The name of annotation field tokenizer.
    *
@@ -46,7 +46,7 @@ public class UtilConst {
   /**
    * The name of the annotated text field (in SOLR).
    */
-  public static final String TEXT4ANNOT_FIELD  = "Text4Annotation";
+  public static final String DEFAULT_TEXT4ANNOT_FIELD  = "Text4Annotation";
   /**
    * The name of the id field (in SOLR).
    */  
@@ -118,6 +118,17 @@ public class UtilConst {
   public static final String CONFIG_STOPWORDS_FILE = "stopwords_file";
 
   /**
+   *  A configuration parameter that defines a name of a annotated text field.
+   */
+  public static final String CONFIG_TEXT4ANNOT_FIELD = "text_field";
+
+  /**
+   *  A configuration parameter that defines a name of an annotation field
+   */
+  public static final String CONFIG_ANNOTATION_FIELD = "annot_field";  
+  
+  
+  /**
    * 
    * This class holds keeps common constants and procedures
    * that are used for indexing.
@@ -159,14 +170,14 @@ public class UtilConst {
                                       replaceAll("\\p{P}", " ");
   }
   
-  /*
-   *  Replaces bad Unicode characters, but doesn't change
-   *  the string length!
-   *  
+  /**
+   *  Replaces bad Unicode characters, but doesn't change the string length!
+   *  <p>
    *  Based on this solution:
-   *  
    *  http://stackoverflow.com/questions/20762/how-do-you-remove-invalid-hexadecimal-characters-from-an-xml-based-data-source-p
-   *  
+   *  </p>
+   *  @param inString   input string
+   *  @return an output string (will have the same length as inString).
    */
   public static String removeBadUnicode(String inString) {
     StringBuilder newString = new StringBuilder();
@@ -194,37 +205,35 @@ public class UtilConst {
   }  
   
   /**
-   *  Creates an artificial term by combining annotation type 
-   *  and a string value.
-   *  <p>
-   *  The string value is already a combination of values for
-   *  the annotation (e.g., PER) and a key term (e.g., Bill).
-   *  The function, {@link #combineFieldValue(String annotationType, String annotationValue, String term)}
-   *  explicitly combines three components (annotation type, annotation value, term).                                         
+   *  Creates an artificial term by merging strings representing
+   *  an annotation type and an annotation label.
    *  
-   *  @author Leonid Boytsov
-   */
-  public static String combineFieldValue(String annotationType, String value) {
-    return annotationType + UtilConst.VALUE_SEPARATOR + value; 
+   * @param annotationType          annotation type, e.g., NamedEntity.
+   * @param annotationLabel         annotation label, e.g. PER.
+   * @return complete keyword representing the annotation   */
+
+  public static String combineFieldValue(String annotationType, 
+                                         String annotationLabel) {
+    return annotationType + UtilConst.VALUE_SEPARATOR + annotationLabel; 
   }
   /**
    * 
-   * Creates an artificial term by combining annotation type by
-   * explicitly combining three components: 
+   * Creates an artificial term annotation keyword  
+   * by merging strings representing the following: 
    * annotation type (e.g., NamedEntity), 
    * annotation value (e.g. PER), 
    * term (e.g., Bill).
    * 
-   * @param annotationType
-   * @param annotationValue
+   * @param annotationType          annotation type, e.g., NamedEntity.
+   * @param annotationLabel         annotation label, e.g. PER.
    * @param term
-   * @return
+   * @return complete keyword representing the annotation
    */
   public static String combineFieldValue(String annotationType, 
-                                         String annotationValue,
+                                         String annotationLabel,
                                          String term) {
     return annotationType + UtilConst.VALUE_SEPARATOR +  
-           annotationValue + UtilConst.VALUE_SEPARATOR +
+           annotationLabel + UtilConst.VALUE_SEPARATOR +
            term; 
   }
 }

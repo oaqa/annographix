@@ -37,6 +37,6 @@ public interface DocumentIndexer {
    */
   void consumeDocument(
                        Map<String, String> docFields,
-                       ArrayList<AnnotationEntry> annots) throws Exception;
+                       AnnotationEntry[] annots) throws Exception;
   void sendBatch() throws Exception;
 }

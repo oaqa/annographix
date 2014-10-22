@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package edu.cmu.lti.oaqa.annographix.util;
 
 import java.util.regex.Pattern;
@@ -29,8 +28,7 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
  */
 public class UtilConst {
   /**
-   *   A version of Lucene/SOLR, which is used to call
-   *   internal Lucene classes.
+   *   A version of Lucene/SOLR library to use.
    */
   public static final String LUCENE_VERSION = "4.6";
   /**
@@ -38,7 +36,7 @@ public class UtilConst {
    */
   public static final String DEFAULT_ANNOT_FIELD = "Annotation";
   /**
-   * The name of annotation field tokenizer.
+   * The name of the annotation field tokenizer.
    *
    */
   public static Object ANNOT_FIELD_TOKENIZER = "solr.WhitespaceTokenizerFactory";
@@ -55,8 +53,7 @@ public class UtilConst {
   public static final String SCORE_FIELD = "score";
   
   /**
-   * The string used to denote any-term (a wildcard)
-   * 
+   * The string used to denote any-term (a wildcard).
    * It should not contain a PAYLOAD_CHAR or a PAYLOAD_ID_SEP_CHAR!
    * 
    */
@@ -72,10 +69,11 @@ public class UtilConst {
   
   /**
    * Separates a payload description from respective keyword.
-   * 
+   * <p>
    *  Must match a payload configuration in the schema.xml file.
    *  This line would look like:
-   *  
+   *  </p>
+   *  <p>
    * <filter class="solr.DelimitedPayloadTokenFilterFactory" delimiter="|" ...    
    *    
    */
@@ -157,10 +155,6 @@ public class UtilConst {
   public static final String INDEX_DOCNO     = "DOCNO";
   
   public static final String USER_AGENT = "Mozilla/4.0";
-  
-  public static final int MAX_ERROR_POS_FIND = 10;
-  
-
   
   public static String preparePayloadToken(String annotText) {
     return PATTERN_PREPARE_PAYLOAD.matcher(annotText).replaceAll(" ").

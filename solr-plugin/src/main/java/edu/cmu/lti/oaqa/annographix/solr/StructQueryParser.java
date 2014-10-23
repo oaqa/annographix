@@ -17,6 +17,8 @@ package edu.cmu.lti.oaqa.annographix.solr;
 
 import java.util.*;
 
+import com.cedarsoftware.util.DeepEquals;
+
 import org.apache.solr.search.SyntaxError;
 
 /**
@@ -77,6 +79,10 @@ public class StructQueryParser {
         addOneElement(e, type);
       }
     }
+    
+    for (int i = 0; i < mTokens.size(); ++i)
+      mEdges.put(i, new ArrayList<Integer>());
+    
     /*
      * Now all lexical entries are added (and we fully established
      * the mappings from labels to ids). Thus, we can process
@@ -131,10 +137,14 @@ public class StructQueryParser {
   
   /**
    * Adds an element to token/constraint/etc arrays.
+   * @throws SyntaxError 
    */
-  private void addOneElement(LexicalEntryParse e, FieldType type) {
+  private void addOneElement(LexicalEntryParse e, FieldType type) throws SyntaxError {
     int id = mTokens.size();
     if (!e.mLabel.isEmpty()) {
+      if (mLabel2Id.containsKey(e.mLabel)) {
+        throw new SyntaxError("Duplicate label: '" + e.mLabel + "'");
+      }
       mLabel2Id.put(e.mLabel, id);
     }
     mTokens.add(e.mToken);
@@ -194,12 +204,7 @@ public class StructQueryParser {
       }
       constr.add(type);
       dependIds.add(depId);
-      if (!mEdges.containsKey(depId)) {
-        mEdges.put(depId, new ArrayList<Integer>());
-      }
-      if (!mEdges.containsKey(headId)) {
-        mEdges.put(headId, new ArrayList<Integer>());
-      }
+
       /*
        * This is a potentially horrible linear-time complexity search
        * in an array. However, for a reasonable-size user query 
@@ -226,8 +231,6 @@ public class StructQueryParser {
       }
     }
   }
-
-
   
   private void doVisit(int edgeId, HashSet<Integer> visited) {
     if (visited.contains(edgeId)) return; // never visit twice
@@ -237,7 +240,102 @@ public class StructQueryParser {
       doVisit(edgeList.get(i), visited);
   }
 
-
+  /**
+   * 
+   * A helper comparison function used only for testing.
+   * 
+   * @param tokens
+   * @param labels
+   * @param types
+   * @param constrType
+   * @param dependId
+   * @param connectQty
+   * @return true if equal
+   */
+  boolean compareTo(String tokens_[],
+                    String labels_[],
+                    String types_[],
+                    String constrType_[],
+                    String dependId_[],
+                    int    connectQty_[]) throws Exception {
+    int N = tokens_.length;
+    
+    ArrayList<String>                     tokens = new ArrayList<String>();
+    ArrayList<String>                     labels  = new ArrayList<String>(); 
+    ArrayList<FieldType>                  types  = new ArrayList<FieldType>();
+    ArrayList<ArrayList<ConstraintType>>  constrType 
+                                              = new ArrayList<ArrayList<ConstraintType>>();
+    ArrayList<ArrayList<Integer>>         dependId
+                                              = new ArrayList<ArrayList<Integer>>();
+    ArrayList<Integer>                    connectQty = new ArrayList<Integer>();
+    
+    if (labels_.length != N) throw new Exception(
+                        String.format("labels len (%d) != tokens len (%d), args))", 
+                                      N, labels_.length));
+    if (types_.length != N) throw new Exception(
+        String.format("labels len (%d) != types len (%d), args))", 
+                      N, types_.length));
+    if (constrType_.length != N) throw new Exception(
+        String.format("labels len (%d) != constrType len (%d), args))", 
+                      N, constrType_.length));
+    if (dependId_.length != N) throw new Exception(
+        String.format("dependId len (%d) != dependId len (%d), args))", 
+                      N, dependId_.length));
+    if (connectQty_.length != N) throw new Exception(
+        String.format("labels len (%d) != connectQty len (%d), args))", 
+                      N, connectQty_.length));
+    
+    for (int i = 0; i < N; ++i) {
+      tokens.add(tokens_[i]);
+      labels.add(labels_[i]);
+      types.add(FieldType.valueOf(types_[i]));
+      ArrayList<ConstraintType> ct = new ArrayList<ConstraintType>();
+      for (String t:constrType_[i].split("[,]")) 
+      if (!t.isEmpty()) { 
+      // This is quite annoying that "".split(",") returns [""] 
+        try {
+          ct.add(ConstraintType.valueOf(t));
+        } catch (java.lang.IllegalArgumentException e) {
+          throw new Exception("Failed to parse the constraint value: '" + t + "'");
+        }
+      }
+      constrType.add(ct);
+      ArrayList<Integer> it = new ArrayList<Integer>();
+      for (String t:dependId_[i].split("[,]")) 
+      if (!t.isEmpty()) { 
+      // This is quite annoying that "".split(",") returns [""]         
+        try {
+          it.add(Integer.valueOf(t));
+        } catch (java.lang.IllegalArgumentException e) {
+          throw new Exception("Failed to parse the dependent id value: '" + t + "'");
+        }
+      }
+      dependId.add(it);
+      connectQty.add(connectQty_[i]);
+    }
+    
+    boolean bTokens = DeepEquals.deepEquals(mTokens, tokens);
+    boolean bLabels = DeepEquals.deepEquals(mLabels, labels);
+    boolean bTypes  = DeepEquals.deepEquals(mTypes, types);
+    boolean bConstrType = DeepEquals.deepEquals(mConstrType, constrType);
+    boolean bDependId = DeepEquals.deepEquals(mDependId, dependId);
+    boolean bConnectQty = DeepEquals.deepEquals(mConnectQty, connectQty);
+    boolean bFinal = bTokens && bLabels && bTypes && bConstrType && 
+                     bDependId  && bConnectQty;
+    if (!bFinal) {
+      System.out.println(String.format("Comparison failed: \n" +
+                        "  Tokens      : %b \n" +
+                        "  Labels      : %b \n" + 
+                        "  Types       : %b \n" + 
+                        "  ConstrType  : %b \n" + 
+                        "  DependId    : %b \n" + 
+                        "  ConnectQty  : %b \n",
+                  bTokens, bLabels, bTypes, bConstrType, bDependId, bConnectQty
+                        ));
+    }
+    
+    return bFinal;
+  }
 
   private ArrayList<String>                         mTokens = 
                                                         new ArrayList<String>();

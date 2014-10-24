@@ -184,5 +184,75 @@ public class StructQueryParserTest {
       e.printStackTrace();
       fail("Exception occurred.");      
     }
-  }    
+  }
+  
+  /**
+   * Let's do some realistic example.
+   */
+  @Test
+  public void testSRL1() {
+    String query = " ~1:it ~2:grew ~3:along ~4:the ~5:river ~6:nile " +  
+                   " @ner:ner_loc #covers(ner,5,6) " + // id = 6
+                   " @v:srl_v #covers(v,2) #parent(v,a1,am-loc) " +  // id = 7
+                   " @a1:srl_a1 #covers(a1,1) " +   // id = 8
+                   " @am-loc:srl_am-loc #covers(am-loc,3,4,5,6) " // id = 9 
+                   ;
+    
+    try {
+      String tokens_[]  = {"it",
+                           "grew",
+                           "along",
+                           "the",
+                           "river",
+                           "nile",
+                           "ner_loc",
+                           "srl_v",
+                           "srl_a1",
+                           "srl_am-loc"};
+      
+      String labels_[]  = {"1",
+                           "2",
+                           "3",
+                           "4",
+                           "5",
+                           "6",
+                           "ner",
+                           "v",
+                           "a1",
+                           "am-loc"};
+      
+      String types_[]   = {"FIELD_TEXT", 
+                          "FIELD_TEXT",
+                          "FIELD_TEXT",
+                          "FIELD_TEXT",
+                          "FIELD_TEXT",
+                          "FIELD_TEXT",
+                          "FIELD_ANNOTATION",
+                          "FIELD_ANNOTATION",
+                          "FIELD_ANNOTATION",
+                          "FIELD_ANNOTATION"};
+
+      String constrType_[] = {"", "", "", "", "", "",
+      "CONSTRAINT_CONTAINS,CONSTRAINT_CONTAINS", // NER
+      "CONSTRAINT_CONTAINS,CONSTRAINT_PARENT,CONSTRAINT_PARENT", // SRL_V
+      "CONSTRAINT_CONTAINS", // SRL_A1
+      // SRL_AM-LOC
+      "CONSTRAINT_CONTAINS,CONSTRAINT_CONTAINS,CONSTRAINT_CONTAINS,CONSTRAINT_CONTAINS" 
+                            };
+      String dependId_[]   = {"", "", "", "", "", "",
+                              "4,5", // NER
+                              "1,8,9", // SRL_V
+                              "0", // SR_A1
+                              "2,3,4,5" // SRL_AM-LOC
+                             }; 
+      int    connectQty_[] = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10}; 
+      
+      StructQueryParser p = new StructQueryParser(query);
+      
+      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, connectQty_));
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail("Exception occurred.");      
+    }
+  }
 }

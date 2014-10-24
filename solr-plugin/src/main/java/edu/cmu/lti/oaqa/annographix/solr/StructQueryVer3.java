@@ -27,7 +27,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.solr.search.SyntaxError;
 
 import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
-import edu.cmu.lti.oaqa.annographix.util.UtilConst;
 
 /**
   *  A rather advanced structured query: for tokens and annotations
@@ -50,7 +49,11 @@ class StructQueryVer3 extends Query {
   private ArrayList<Term>   mTerms = new ArrayList<Term>();
   
   /** a parsed query */
-  StructQueryParse mQueryParse;
+  private final StructQueryParse              mQueryParse;
+  /** query tokens (annotation or plain text) */
+  private final ArrayList<String>             mTokens;
+  /** token types */
+  private final ArrayList<FieldType>          mTokenTypes;
   
   /**
    * Constructor.
@@ -74,14 +77,14 @@ class StructQueryVer3 extends Query {
     
     mQueryParse = new StructQueryParse(mQueryText);
     
-    final ArrayList<String>     tokens = mQueryParse.getTokens();
-    final ArrayList<FieldType>  types  = mQueryParse.getTypes();
+    mTokens = mQueryParse.getTokens();
+    mTokenTypes = mQueryParse.getTypes();
     
-    for (int i = 0; i < tokens.size(); ++i) {
+    for (int i = 0; i < mTokens.size(); ++i) {
       mTerms.add(new Term(
-                          types.get(i) == FieldType.FIELD_TEXT ? 
+                          mTokenTypes.get(i) == FieldType.FIELD_TEXT ? 
                           mTextFieldName : mAnnotFieldName,
-                          tokens.get(i)
+                          mTokens.get(i)
                          )
                 );
     }
@@ -185,12 +188,92 @@ class StructQueryVer3 extends Query {
           "Bug: normalize() is not supposed to be called ");
     }    
     
+    private boolean termNotInReader(AtomicReader reader, Term term) throws IOException {
+      return reader.docFreq(term) == 0;
+    }
+    
     @Override
     public Scorer scorer(AtomicReaderContext context, 
                           boolean scoreDocsInOrder,
                           boolean topScorer, 
                           Bits acceptDocs) throws IOException {
-      return null;
+
+      final AtomicReader        reader = context.reader();
+      final Bits                liveDocs = acceptDocs;
+      DocsAndPositionsEnum[]    postingsEnum = 
+                                // mTerms is from the enclosing class
+                                       new DocsAndPositionsEnum[mTerms.size()];
+      
+      // mTextFieldName & mAnnotFieldName come from the enclosing class 
+      final Terms fieldTermsTextField = reader.terms(mTextFieldName);
+      final Terms fieldTermsAnnotField = reader.terms(mAnnotFieldName);
+      if (fieldTermsTextField == null) {
+        throw new RuntimeException("Bug: fieldTermsTextField is null");
+      }
+      if (fieldTermsAnnotField == null) {
+        throw new RuntimeException("Bug: fieldTermsAnnotField is null");
+      }
+      
+      // Reuse TermsEnum below:
+      final TermsEnum termTextFieldEnum = fieldTermsTextField.iterator(null);
+      final TermsEnum termAnnotFieldEnum = fieldTermsTextField.iterator(null);
+      
+      for (int i = 0; i < mTerms.size(); ++i) {
+        String termDesc = "'" + mTokens.get(i) + "' type: " + mTokenTypes.get(i);
+        final Term t = mTerms.get(i);
+        final TermState state = mTermContexts.get(i).get(context.ord);
+        
+        if (state == null) { // term doesn't exist in this segment 
+          if (!termNotInReader(reader, t)) {
+            throw new RuntimeException("Bug: no termstate found but term " + 
+                                       termDesc + " exists in reader");
+          }
+          return null;
+        }
+        
+        DocsAndPositionsEnum    post = null;
+        
+        if (mTokenTypes.get(i) == FieldType.FIELD_TEXT) {
+          termTextFieldEnum.seekExact(t.bytes(), state);
+          // Text field must include offsets
+          post = termTextFieldEnum.docsAndPositions(liveDocs, null,
+                                        DocsAndPositionsEnum.FLAG_OFFSETS |
+                                        DocsAndPositionsEnum.FLAG_FREQS);
+          if (null == post) {
+            if (!termTextFieldEnum.seekExact(t.bytes())) {
+              throw new RuntimeException("Bug: no termstate found but term " + 
+                                          termDesc + " exists in reader");
+            }
+            // term does exist, but has no positions and/or offsets
+            throw new IllegalStateException("field \"" + t.field() + 
+                "\" was indexed without position and/or offset data; cannot run "
+                // Query text comes from the enclosing class
+                + " sub-query: '" + mQueryText + "'" 
+                + " (term=" + t.text() + ")");
+          }
+        } else {
+          // Annotation field must include payloads
+          termAnnotFieldEnum.seekExact(t.bytes(), state);
+          post = termAnnotFieldEnum.docsAndPositions(liveDocs, null, 
+                                        DocsAndPositionsEnum.FLAG_PAYLOADS |
+                                        DocsAndPositionsEnum.FLAG_FREQS);
+          if (null == post) {
+            if (!termAnnotFieldEnum.seekExact(t.bytes())) {
+              throw new RuntimeException("Bug: no termstate found but term " + 
+                                          termDesc + " exists in reader");
+            }
+            // term does exist, but has no positions and/or payloads
+            throw new IllegalStateException("field \"" + t.field() + 
+                "\" was indexed without position and/or payload data; cannot run "
+                // Query text comes from the enclosing class
+                + " sub-query: '" + mQueryText + "'" 
+                + " (term=" + t.text() + ")");            
+          }          
+        }
+        postingsEnum[i] = post;
+      }
+      
+      **** CONTINUE HERE *****
     }
     
     @Override

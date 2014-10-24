@@ -25,7 +25,7 @@ import org.junit.Test;
  * @author Leonid Boytsov
  *
  */
-public class StructQueryParserTest {
+public class StructQueryParseTest {
   /**
    * Simple query without any constraints.
    */
@@ -42,7 +42,7 @@ public class StructQueryParserTest {
       String dependId_[]   = {"","","",""}; 
       int    connectQty_[] = {0, 0, 0, 0};
       
-      StructQueryParser p = new StructQueryParser(query);
+      StructQueryParse p = new StructQueryParse(query);
       
       assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, connectQty_));
     } catch (Exception e) {
@@ -62,7 +62,7 @@ public class StructQueryParserTest {
     
     try {
 
-      StructQueryParser p = new StructQueryParser(query);
+      StructQueryParse p = new StructQueryParse(query);
     } catch (Exception e) {
       System.out.println("Error message: " + e);
       bGotException = true;      
@@ -95,7 +95,7 @@ public class StructQueryParserTest {
                               "4", "5", ""}; 
       int    connectQty_[] = {3, 3, 3, 3, 3, 3};
       
-      StructQueryParser p = new StructQueryParser(query);
+      StructQueryParse p = new StructQueryParse(query);
       
       assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, connectQty_));
     } catch (Exception e) {
@@ -116,7 +116,7 @@ public class StructQueryParserTest {
     
     try {
 
-      StructQueryParser p = new StructQueryParser(query);
+      StructQueryParse p = new StructQueryParse(query);
     } catch (Exception e) {
       System.out.println("Error message: " + e);
       bGotException = true;      
@@ -137,7 +137,7 @@ public class StructQueryParserTest {
     
     try {
 
-      StructQueryParser p = new StructQueryParser(query);
+      StructQueryParse p = new StructQueryParse(query);
     } catch (Exception e) {
       System.out.println("Error message: " + e);
       bGotException = true;      
@@ -177,7 +177,7 @@ public class StructQueryParserTest {
                               "", "5", "4"}; 
       int    connectQty_[] = {3, 3, 3, 0, 2, 2};
       
-      StructQueryParser p = new StructQueryParser(query);
+      StructQueryParse p = new StructQueryParse(query);
       
       assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, connectQty_));
     } catch (Exception e) {
@@ -247,7 +247,7 @@ public class StructQueryParserTest {
                              }; 
       int    connectQty_[] = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10}; 
       
-      StructQueryParser p = new StructQueryParser(query);
+      StructQueryParse p = new StructQueryParse(query);
       
       assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, connectQty_));
     } catch (Exception e) {

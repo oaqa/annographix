@@ -140,14 +140,6 @@ public class UtilConst {
   public static final Pattern PATTERN_PREPARE_PAYLOAD = Pattern.compile("[\\s" + 
                                                     UtilConst.PAYLOAD_CHAR + 
                                                     UtilConst.PAYLOAD_ID_SEP_CHAR + "]");
-  /**
-   * Query operators.
-   */
-  public static final String QUERY_CHILDOF      = "childof";
-  public static final String QUERY_PARENTOF     = "parentof";
-  public static final String QUERY_INSIDE       = "inside";
-  public static final String QUERY_CONTAINS     = "contains";
-  public static final String QUERY_NEXUS        = "nexus";
   
   /** end query operators **/
 

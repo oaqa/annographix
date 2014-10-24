@@ -29,18 +29,22 @@ public class QueryGraphNode implements Comparable<QueryGraphNode> {
   
   /** An associated posting class **/
   private OnePostStateBase                      mPost = null;
-  private StructQueryParser.ConstraintType[]    mConstrType = null;
+  private StructQueryParse.ConstraintType[]     mConstrType = null;
   private QueryGraphNode[]                      mConstrNode = null;
   private int                                   mConnectQty = 0;
   
-  public QueryGraphNode(OnePostStateBase post,
-                        ArrayList<StructQueryParser.ConstraintType> constrType,
+  public QueryGraphNode[] createGraphNodes() {
+    return null;
+  }
+  
+  protected QueryGraphNode(OnePostStateBase post,
+                        ArrayList<StructQueryParse.ConstraintType> constrType,
                         ArrayList<QueryGraphNode> constrNode) throws Exception {
     if (constrNode.size() != constrType.size()) {
       throw new Exception("Bug: constrType.size() != constrNode.size()");
     }
     mPost = post;
-    mConstrType = new StructQueryParser.ConstraintType[constrType.size()];
+    mConstrType = new StructQueryParse.ConstraintType[constrType.size()];
     mConstrNode = new QueryGraphNode[constrNode.size()];
     for (int i = 0; i < constrType.size(); ++i) {
       mConstrType[i] = constrType.get(i);

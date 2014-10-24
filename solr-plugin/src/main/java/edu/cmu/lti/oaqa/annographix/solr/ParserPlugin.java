@@ -52,7 +52,7 @@ class StructRetrQParser extends QParser {
   float     mBoost = 1.0f;
   /** a current parser version */
   Integer   mVersion = 3;
-  /** a span size which should cover a match */
+  /** A size (in the # of chars) of the window where we look for occurrences. */
   Integer   mSpan = Integer.MAX_VALUE;
   /** a name of the text field that is annotated */
   String    mTextFieldName;

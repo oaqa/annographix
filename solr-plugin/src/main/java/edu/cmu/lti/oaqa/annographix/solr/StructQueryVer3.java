@@ -22,6 +22,7 @@ import java.util.Set;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.solr.search.SyntaxError;
 
@@ -162,7 +163,27 @@ class StructQueryVer3 extends Query {
                                 termStatsAnnotField);            
     }
     @Override
-    public String toString() { return "weight(" + StructQueryVer3.this + ")"; }
+    public String toString() { return "weight(" + getQuery() + ")"; }
+    
+    /*
+     *  Leo believes that getValueForNormalization() & normalize() are not
+     *  relevant (and will not be called) in this implementation, because
+     *  there is only one way to create an instance of this weight class.
+     *  Namely, via a constructor. The constructor, then, generate instances
+     *  of two weight calsses based on the term and collection statistics.
+     * 
+     */
+    @Override
+    public float getValueForNormalization() {
+      throw new RuntimeException(
+          "Bug: getValueForNormalization() is not supposed to be called ");
+    }
+
+    @Override
+    public void normalize(float queryNorm, float topLevelBoost) {
+      throw new RuntimeException(
+          "Bug: normalize() is not supposed to be called ");
+    }    
     
     @Override
     public Scorer scorer(AtomicReaderContext context, 
@@ -171,5 +192,52 @@ class StructQueryVer3 extends Query {
                           Bits acceptDocs) throws IOException {
       return null;
     }
+    
+    @Override
+    public StructQueryVer3 getQuery() { return StructQueryVer3.this; }
+    
+    @Override
+    public Explanation explain(AtomicReaderContext context, int doc) throws IOException {
+      Scorer scorer = scorer(context, true, false, context.reader().getLiveDocs());
+      /* 
+       * Leo TODO: This one needs to be tested.  
+       */
+
+      if (scorer != null) {
+        int newDoc = scorer.advance(doc);
+        if (newDoc == doc) {
+          ComplexExplanation result = new ComplexExplanation();
+          float freq = ((StructScorerVer3)scorer).freq();
+          
+          // 1. frequency explanation for the text field
+          SimScorer docScorerTextField 
+                            = mSimilarity.simScorer(mWeightTextField, context);
+          result.setDescription("weight("+getQuery()+" in "+doc+") " + 
+              "[" + mSimilarity.getClass().getSimpleName() + "], result of:");
+          Explanation scoreExplanationTextField = 
+              docScorerTextField.explain(doc, 
+                                new Explanation(freq, "textFieldFreq=" + freq));          
+          result.addDetail(scoreExplanationTextField);          
+          
+          // 2. frequency explanation for the annotation field
+          SimScorer docScorerAnnotField 
+                            = mSimilarity.simScorer(mWeightAnnotField, context);
+          Explanation scoreExplanationAnnotField = 
+              docScorerAnnotField.explain(doc, 
+                                new Explanation(freq, "annotFieldFreq=" + freq));          
+          result.addDetail(scoreExplanationAnnotField);          
+
+          // 3. The value is a sum
+          result.setValue(
+                          scoreExplanationTextField.getValue() + 
+                          scoreExplanationAnnotField.getValue()
+                          );
+          result.setMatch(true);
+          return result;
+        }
+      }
+
+      return new ComplexExplanation(false, 0.0f, "no matching term");
+    }    
   }
 }

@@ -35,7 +35,7 @@ public class StructQueryParser {
   public enum  ConstraintType { CONSTRAINT_PARENT, CONSTRAINT_CONTAINS };
   
   public String CONSTR_PARENT = "parent";
-  public String CONSTR_CONTAINS = "contains";
+  public String CONSTR_CONTAINS = "covers";
   
   public String PREFIX_TOKEN = "~";
   public String PREFIX_ANNOT = "@";
@@ -56,7 +56,7 @@ public class StructQueryParser {
      *        i.e., we want to keep them 
      *        rather than replacing by regular spaces?
      */
-    query = query.replaceAll("\\s", " "); 
+    query = query.replaceAll("\\s+", " "); 
     ArrayList<String> allConstr = new ArrayList<String>();
     for (String tok: query.trim().split("\\s+")) {
       if (tok.charAt(0) == '#') {
@@ -98,7 +98,7 @@ public class StructQueryParser {
   
   /**
    * 
-   * Check if the element lable contains only valid symbols.
+   * Check if the element label contains only valid symbols.
    * 
    * @param label
    * @return
@@ -130,7 +130,11 @@ public class StructQueryParser {
     }
     String label = token.substring(prefix.length(), pos);
     
-    checkLabelSymbols(label);
+    if (!checkLabelSymbols(label)) {
+      throw new SyntaxError(
+          String.format("Invalid chars in the label: '%s' token '%s'", 
+                        label, token));
+    }
     
     return new LexicalEntryParse(label, token.substring(pos + 1));
   }
@@ -192,8 +196,16 @@ public class StructQueryParser {
       throw new SyntaxError(String.format("Cannot find a lexical entry " +
           " for the label '%s', constraint '%s'", headLabel, tok));          
     }
+
     ArrayList<ConstraintType>   constr = mConstrType.get(headId);
     ArrayList<Integer>          dependIds = mDependId.get(headId);
+    
+    if (ConstraintType.CONSTRAINT_PARENT == type) {
+      if (mTypes.get(headId) != FieldType.FIELD_ANNOTATION)  {
+        throw new SyntaxError(String.format(
+            "The parent in the constraint '%s' should be an annotation", tok));
+      }
+    }
     
     for (int i = 1; i < parts.length; ++i) {
       String    depLabel = parts[i].trim();
@@ -202,6 +214,15 @@ public class StructQueryParser {
         throw new SyntaxError(String.format("Cannot find a lexical entry " +
             " for the label '%s', constraint '%s'", depLabel, tok));        
       }
+      
+      if (ConstraintType.CONSTRAINT_PARENT == type) {
+        if (mTypes.get(depId) != FieldType.FIELD_ANNOTATION)  {
+          throw new SyntaxError(String.format(
+              "A child (label '%s') in the constraint '%s' should be an annotation", 
+                        depLabel, tok));
+        }
+      }      
+      
       constr.add(type);
       dependIds.add(depId);
 
@@ -292,7 +313,7 @@ public class StructQueryParser {
       ArrayList<ConstraintType> ct = new ArrayList<ConstraintType>();
       for (String t:constrType_[i].split("[,]")) 
       if (!t.isEmpty()) { 
-      // This is quite annoying that "".split(",") returns [""] 
+      // "".split(",") returns [""] 
         try {
           ct.add(ConstraintType.valueOf(t));
         } catch (java.lang.IllegalArgumentException e) {
@@ -303,7 +324,7 @@ public class StructQueryParser {
       ArrayList<Integer> it = new ArrayList<Integer>();
       for (String t:dependId_[i].split("[,]")) 
       if (!t.isEmpty()) { 
-      // This is quite annoying that "".split(",") returns [""]         
+      // "".split(",") returns [""]         
         try {
           it.add(Integer.valueOf(t));
         } catch (java.lang.IllegalArgumentException e) {
@@ -314,14 +335,14 @@ public class StructQueryParser {
       connectQty.add(connectQty_[i]);
     }
     
-    boolean bTokens = DeepEquals.deepEquals(mTokens, tokens);
-    boolean bLabels = DeepEquals.deepEquals(mLabels, labels);
-    boolean bTypes  = DeepEquals.deepEquals(mTypes, types);
+    boolean bTokens     = DeepEquals.deepEquals(mTokens, tokens);
+    boolean bLabels     = DeepEquals.deepEquals(mLabels, labels);
+    boolean bTypes      = DeepEquals.deepEquals(mTypes, types);
     boolean bConstrType = DeepEquals.deepEquals(mConstrType, constrType);
-    boolean bDependId = DeepEquals.deepEquals(mDependId, dependId);
+    boolean bDependId   = DeepEquals.deepEquals(mDependId, dependId);
     boolean bConnectQty = DeepEquals.deepEquals(mConnectQty, connectQty);
-    boolean bFinal = bTokens && bLabels && bTypes && bConstrType && 
-                     bDependId  && bConnectQty;
+    boolean bFinal      = bTokens && bLabels && bTypes && 
+                          bConstrType && bDependId && bConnectQty;
     if (!bFinal) {
       System.out.println(String.format("Comparison failed: \n" +
                         "  Tokens      : %b \n" +

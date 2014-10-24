@@ -29,7 +29,7 @@ public class QueryGraphNode implements Comparable<QueryGraphNode> {
   
   /** An associated posting class **/
   private OnePostStateBase                      mPost = null;
-  private StructQueryParser.ConstraintType[]     mConstrType = null;
+  private StructQueryParser.ConstraintType[]    mConstrType = null;
   private QueryGraphNode[]                      mConstrNode = null;
   private int                                   mConnectQty = 0;
   
@@ -54,16 +54,17 @@ public class QueryGraphNode implements Comparable<QueryGraphNode> {
 
   @Override
   public int compareTo(QueryGraphNode o) {
-    if (mConnectQty != o.mConnectQty)
+    if (mConnectQty != o.mConnectQty) {
     /*
      *  if mConnectQty > o.mConnectQty we return a value < 0, 
      *  so that an entry with a larger Qty values goes first.
      */
       return o.mConnectQty - mConnectQty;
+    }
     
     assert(mPost != null && o.mPost != null);
     
-    long diff = mPost.getPostPost() - o.mPost.getPostPost();
+    long diff = mPost.getPostCost() - o.mPost.getPostCost();
     return diff < 0 ? - 1 : 
                     diff > 0 ? 1 : 0;
   }

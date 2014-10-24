@@ -111,11 +111,11 @@ public abstract class OnePostStateBase implements Comparable <OnePostStateBase> 
    * intersection of postings.
    */
   public int compareTo(OnePostStateBase o) {
-    long d = getPostPost() - o.getPostPost();
+    long d = getPostCost() - o.getPostCost();
     return d == 0 ? 0 : (d < 0 ? -1 : 1);
   }
 
-  public long getPostPost() {
+  public long getPostCost() {
     return mPosting.cost();
   }  
   

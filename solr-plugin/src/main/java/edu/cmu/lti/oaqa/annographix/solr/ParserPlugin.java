@@ -15,6 +15,8 @@
  */
 package edu.cmu.lti.oaqa.annographix.solr;
 
+import edu.cmu.lti.oaqa.annographix.util.UtilConst;
+
 import org.apache.lucene.search.Query;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
@@ -46,13 +48,22 @@ public class ParserPlugin  extends QParserPlugin {
 
 
 class StructRetrQParser extends QParser {
+  /** a query boost */
   float     mBoost = 1.0f;
+  /** a current parser version */
   Integer   mVersion = 3;
+  /** a span size which should cover a match */
   Integer   mSpan = Integer.MAX_VALUE;
+  /** a name of the text field that is annotated */
+  String    mTextFieldName;
+  /** a name of the field that stores annotations for the text field mTextFieldName */
+  String    mAnnotFieldName;
   
   public final static String PARAM_BOOST    = "boost";
   public final static String PARAM_VERSION  = "ver";
   public final static String PARAM_SPAN     = "span";
+  public final static String PARAM_TEXT_FIELD = UtilConst.CONFIG_TEXT4ANNOT_FIELD;
+  public final static String PARAM_ANNOT_FIELD = UtilConst.CONFIG_ANNOTATION_FIELD;
   
   public StructRetrQParser(String qstr, 
                             SolrParams localParams, 
@@ -68,9 +79,12 @@ class StructRetrQParser extends QParser {
     
     if (localParams.getInt(PARAM_SPAN) != null) 
       mSpan = localParams.getInt(PARAM_SPAN);
-  }
-  
-
+    
+    mTextFieldName = localParams.get(PARAM_TEXT_FIELD, 
+                                     UtilConst.DEFAULT_TEXT4ANNOT_FIELD);
+    mAnnotFieldName = localParams.get(PARAM_ANNOT_FIELD,
+                                     UtilConst.DEFAULT_ANNOT_FIELD);
+  }  
 
   @Override
   public Query parse() throws SyntaxError {
@@ -93,9 +107,6 @@ class StructRetrQParser extends QParser {
   }
   
   private Query parseVer3(String text) throws SyntaxError {       
-    StructQueryParser qParsed = new StructQueryParser(text);
-    
-    return null;
-    //return new MixedTwoLevelQuery(mSpan, tokens, tokenRels, nexusIds, text);
+    return new StructQueryVer3(text, mSpan, mTextFieldName, mAnnotFieldName);
   }  
 }

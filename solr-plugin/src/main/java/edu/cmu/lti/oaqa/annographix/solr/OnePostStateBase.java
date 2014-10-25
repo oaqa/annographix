@@ -43,6 +43,7 @@ import org.apache.lucene.index.DocsAndPositionsEnum;
  */
 import org.apache.lucene.search.DocIdSetIterator;
 
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 import edu.stanford.nlp.util.ArrayUtils;
 
 /** 
@@ -55,6 +56,11 @@ public abstract class OnePostStateBase implements Comparable <OnePostStateBase> 
   public static int NO_MORE_DOCS = org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
   // TODO change to a larger value
   protected static int INIT_SIZE = 1;
+  
+  public static OnePostStateBase createPost(DocsAndPositionsEnum posting, FieldType type) {
+    return type == FieldType.FIELD_ANNOTATION ? 
+                      new OnePostStateAnnot(posting):new OnePostStateToken(posting);
+  }
   
   public OnePostStateBase(DocsAndPositionsEnum posting) {
     mPosting = posting;
@@ -107,7 +113,7 @@ public abstract class OnePostStateBase implements Comparable <OnePostStateBase> 
   
   @Override
   /**
-   * This function is used to order postings for efficient leapfrog-based
+   * This function is used to order postings for efficient leapfrogging-based
    * intersection of postings.
    */
   public int compareTo(OnePostStateBase o) {
@@ -146,4 +152,70 @@ public abstract class OnePostStateBase implements Comparable <OnePostStateBase> 
   protected int                     mDocId;
   protected int                     mQty = 0;
   protected ElemInfoData            mElemInfo[] = new ElemInfoData[0];  
+}
+
+/**
+ * This a helper class to read annotation info from posting lists' payloads.
+ * 
+ * @author Leonid boytsov
+ *
+ */
+class OnePostStateAnnot extends OnePostStateBase {
+
+  /**
+   * @param posting     an already initialized posting list.
+   */
+  public OnePostStateAnnot(DocsAndPositionsEnum posting) {
+    super(posting);
+  }
+
+  /**
+   * Read next element {@link edu.cmu.lti.oaqa.annographix.solr.OnePostStateBase#readDocElements()}.
+   */
+  @Override
+  protected void readDocElements() throws IOException {
+    mQty = mPosting.freq();
+    // Ensure we have enough space to store 
+    extendElemInfo(mQty);
+    for (int i = 0; i < mQty; ++i) {
+      mPosting.nextPosition();   
+      AnnotEncoder.decode(mPosting.getPayload(), mElemInfo[i]);
+    }
+  }
+
+}
+
+/**
+ * This a helper class to read token info from posting lists.
+ * 
+ * @author Leonid boytsov
+ *
+ */
+class OnePostStateToken extends OnePostStateBase {
+
+  /**
+    * @param posting    an already initialized posting list.
+    */
+  public OnePostStateToken(DocsAndPositionsEnum posting) {
+    super(posting);
+  }
+
+  /**
+   * Read next element {@link edu.cmu.lti.oaqa.annographix.solr.OnePostStateBase#readDocElements()}.
+   */
+  @Override
+  protected void readDocElements() throws IOException {
+    mQty = mPosting.freq();
+    // Ensure we have enough space to store 
+    extendElemInfo(mQty);
+    for (int i = 0; i < mQty; ++i) {
+      mPosting.nextPosition();
+      ElemInfoData dt = mElemInfo[i];
+      dt.mId = -1;
+      dt.mParentId = -1;
+      dt.mStartOffset = mPosting.startOffset();
+      dt.mEndOffset = mPosting.endOffset();
+    }
+  }
+
 }

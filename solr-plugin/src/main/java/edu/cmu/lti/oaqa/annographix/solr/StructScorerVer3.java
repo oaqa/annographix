@@ -20,22 +20,93 @@
 package edu.cmu.lti.oaqa.annographix.solr;
 
 import java.io.IOException;
+import java.util.*;
 
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
+import org.apache.lucene.index.*;
+import org.apache.lucene.search.*;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
+
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 
 /**
+ * 
+ * A custom scorer class.
+ * <p>This is workhorse class that does most of the hard work in three steps:</p>
+ * <ol>
+ * <li>Finds documents containing all query elements (by leapfrogging).
+ * <li>Inside a found document, identify all spans containing all query elements.
+ *    A span is specified by either i) the maximum size in the # of characters;
+ *    ii) a label of the covering annotation.
+ * <li>Inside each span, find at least one configuration (as specified by
+ *    element offsets) that satisfies all constraints (as expressed by parent-child,
+ *    or containment relationship) of the query.
+ * </ol>
+ * 
  * @author Leonid Boytsov
  *
  */
-public class StructScorerVer3 extends Scorer {
-
+class StructScorerVer3 extends Scorer {
+  private SimScorer mDocScorerTextField; 
+  private SimScorer mDocScorerAnnotField;
+  private int       mCurrDocId = -1;
+  private int       mSpan;
+  private int       mNumMatches = 0;
+  private OnePostStateBase[] mAllPosts;
+  private OnePostStateBase   mCoverAnnotPost = null;
+  private QueryGraphNode[]   mAllGraphNodes;
   /**
-   * @param weight
+   * @param weight          An instance of the weight class that created this scorer.
+   * @param mQueryParse     A parsed query.
+   * @param postings        All postings except the covering annotation postings.
+   * @param coverAnnotPost  The covering annotation posting, or null, if there's none.
+   * @param span            The maximum span size in the # number of characters.
+   * @param docScorerTextField  A similarity scorer for the text field.
+   * @param docScorerAnnotField A similarity scorer for the annotation field.
    */
-  public StructScorerVer3(Weight weight) {
+  public StructScorerVer3(Weight weight,
+                          StructQueryParse queryParse, 
+                          DocsAndPositionsEnum[] postings,
+                          DocsAndPositionsEnum   coverAnnotPost,
+                          int span,
+                          SimScorer docScorerTextField, 
+                          SimScorer docScorerAnnotField) {
     super(weight);
-    // TODO Auto-generated constructor stub
+    mDocScorerAnnotField = docScorerAnnotField;
+    mDocScorerTextField = docScorerTextField;
+    mSpan = span;
+ 
+    /**
+     * We need to package postings in two different ways.
+     * 1) Embed them into objects of the type OnePostStateBase and sort an
+     * array of the type OnePostStateBase[]. This will allow us to leapfrog
+     * efficiently in the function {@see #advance()}.
+     * 2) Further embed instances of the type OnePostStateBase into the objects
+     * of the type QueryGraphNode. This allows us to resort postings differently.
+     * In addition, the latter array won't include a covering annotation.
+     */
+    
+    /** 1. Sorting for efficient {@see #advance()}. */
+    ArrayList<OnePostStateBase> allPostList = new ArrayList<OnePostStateBase>();
+    for(int i = 0; i < queryParse.getTokens().size(); ++i) 
+      allPostList.add(
+          OnePostStateBase.createPost(postings[i], queryParse.getTypes().get(i))
+      );
+    if (coverAnnotPost != null)
+      mCoverAnnotPost = 
+        OnePostStateBase.createPost(coverAnnotPost, FieldType.FIELD_ANNOTATION);
+    mAllPosts = new OnePostStateBase[allPostList.size()];
+    allPostList.toArray(mAllPosts);
+    
+    Arrays.sort(mAllPosts);
+    /** 2. Sorting for efficient search within documents. */
+    ArrayList<QueryGraphNode>  allGraphNodes = new ArrayList<QueryGraphNode>();
+    
+    for (int i = 0; i < postings.length; ++i) {
+      **** constructing allGraphNodes won't be simple
+      and in fact maybe I don't really need another wrapper class,
+      which may also be inefficient??? Can I reuse the OnePostStateBase ???
+      *****
+    }
   }
 
   /* (non-Javadoc)
@@ -44,7 +115,8 @@ public class StructScorerVer3 extends Scorer {
   @Override
   public float score() throws IOException {
     // TODO Auto-generated method stub
-    return 0;
+    return mDocScorerAnnotField.score(mCurrDocId, freq()) +
+           mDocScorerTextField.score(mCurrDocId, freq());
   }
 
   /* (non-Javadoc)
@@ -52,8 +124,7 @@ public class StructScorerVer3 extends Scorer {
    */
   @Override
   public int freq() throws IOException {
-    // TODO Auto-generated method stub
-    return 0;
+    return mNumMatches;
   }
 
   /* (non-Javadoc)
@@ -61,17 +132,30 @@ public class StructScorerVer3 extends Scorer {
    */
   @Override
   public int docID() {
-    // TODO Auto-generated method stub
-    return 0;
+    return mCurrDocId;
   }
 
-  /* (non-Javadoc)
-   * @see org.apache.lucene.search.DocIdSetIterator#nextDoc()
+  /**
+   * Advance to the next doc after {@see #docID()}.
+   * <p>
+   * In the ExactPhraseScorer in Solr, this function is highly optimized.
+   * It is necessary, b/c the {@link #advance(int)} function is relatively costly 
+   * while checking for an exact phrase occurrence can be implemented very
+   * efficiently.
+   * </p>
+   * <p>  
+   * In contrast, structured queries are expensive to evaluate. Thus, a clever 
+   * optimization likely wouldn't make a lot of sense here. 
+   * In fact, in a SloppyPhraseScorer (Solr 4.6) a simple advancement 
+   * algorithm is used, which is not based on the galloping  intersection.
+   * </p>
+   * <p>If an optimized implementation of the {@link #nextDoc()} function does
+   * not make sense for the sloppy phrase checker, it should be even
+   * less useful for the (mostly) more expensive structured query scorer.
    */
   @Override
   public int nextDoc() throws IOException {
-    // TODO Auto-generated method stub
-    return 0;
+    return advance(mCurrDocId + 1);  
   }
 
   /* (non-Javadoc)
@@ -91,5 +175,4 @@ public class StructScorerVer3 extends Scorer {
     // TODO Auto-generated method stub
     return 0;
   }
-
 }

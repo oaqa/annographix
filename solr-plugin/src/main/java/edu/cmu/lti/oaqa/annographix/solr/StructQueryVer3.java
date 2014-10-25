@@ -29,14 +29,16 @@ import org.apache.solr.search.SyntaxError;
 import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 
 /**
-  *  A rather advanced structured query: for tokens and annotations
-  *  in a window of a given size, we can specify a set of constraints.
+  *  Structured query parser: it finds occurrences of an arbitrary
+  *  annotation sub-graph within a given span. A span is represented
+  *  by either a covering annotation, by the maximum length. For efficiency,
+  *  a span <b>should be reasonably small, </b> e.g. roughly a sentence or 
+  *  a paragraph.
   *  
   *  @author Leonid Boytsov
   *
   */
-
-class StructQueryVer3 extends Query {
+public class StructQueryVer3 extends Query {
   /** query text */
   private String    mQueryText;
   /** a name of the text field that is annotated */
@@ -126,14 +128,14 @@ class StructQueryVer3 extends Query {
   
   @Override
   public Weight createWeight(IndexSearcher searcher) throws IOException {
-    return new StructQueryVer3Weight(searcher);
+    return new StructQueryWeightVer3(searcher);
   }   
   
   /**
    *  A structured query. 
    *  Modeled partly after {@link org.apache.lucene.search.PhraseQuery}.
    */  
-  private class StructQueryVer3Weight extends Weight {
+  protected class StructQueryWeightVer3 extends Weight {
     /** Represents a similarity function defined in SOLR config */
     private final Similarity                            mSimilarity;
     /** A similarity weight for the text-field tokens */
@@ -144,7 +146,7 @@ class StructQueryVer3 extends Query {
                                                 new ArrayList<TermContext>();
     private transient TermContext                       mCoverAnnotContext;
     
-    public StructQueryVer3Weight(IndexSearcher searcher) throws IOException {
+    public StructQueryWeightVer3(IndexSearcher searcher) throws IOException {
       mSimilarity = searcher.getSimilarity();
       final IndexReaderContext readerContext = searcher.getTopReaderContext();
       
@@ -300,13 +302,12 @@ class StructQueryVer3 extends Query {
                           boolean scoreDocsInOrder,
                           boolean topScorer, 
                           Bits acceptDocs) throws IOException {
-
       final AtomicReader        reader = context.reader();
       final Bits                liveDocs = acceptDocs;
       DocsAndPositionsEnum[]    postings = 
                                 // mTerms is from the enclosing class
                                        new DocsAndPositionsEnum[mTerms.size()];
-      DocsAndPositionsEnum      coverAnnotPost;
+      DocsAndPositionsEnum      coverAnnotPost = null;
       
       // mTextFieldName & mAnnotFieldName come from the enclosing class 
       final Terms fieldTermsTextField = reader.terms(mTextFieldName);
@@ -343,8 +344,13 @@ class StructQueryVer3 extends Query {
                                     termAnnotFieldEnum);
       }
       
-      //**** CONTINUE HERE *****
-      return null;
+      
+      return new StructScorerVer3(this,
+          mQueryParse,
+          postings, coverAnnotPost, 
+          mSpan,
+          mSimilarity.simScorer(mWeightTextField, context),
+          mSimilarity.simScorer(mWeightAnnotField, context));
     }
     
     @Override
@@ -356,7 +362,6 @@ class StructQueryVer3 extends Query {
       /* 
        * Leo TODO: This one needs to be tested.  
        */
-
       if (scorer != null) {
         int newDoc = scorer.advance(doc);
         if (newDoc == doc) {
@@ -373,7 +378,12 @@ class StructQueryVer3 extends Query {
                                 new Explanation(freq, "textFieldFreq=" + freq));          
           result.addDetail(scoreExplanationTextField);          
           
-          // 2. frequency explanation for the annotation field
+          /**
+           *  2. frequency explanation for the annotation field we plug the 
+           *     same frequency value into two different scorers: one for the 
+           *     regular text field and another for the annotation field
+           *     {@see edu.cmu.lti.oaqa.annographix.solr.StructScorerVer3#score()}.
+           */
           SimScorer docScorerAnnotField 
                             = mSimilarity.simScorer(mWeightAnnotField, context);
           Explanation scoreExplanationAnnotField = 

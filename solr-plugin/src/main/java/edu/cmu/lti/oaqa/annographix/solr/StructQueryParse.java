@@ -25,7 +25,7 @@ import org.apache.solr.search.SyntaxError;
  * 
  * A structured-query parse + a storage for the parsed result. This parsing
  * output will later used to open the necessary terms as well
- * as to generate similarity {@link org.apache.lucene.search.similarities.SimScorer}
+ * as to generate similarity {@link org.apache.lucene.search.similarities.Similarity.SimScorer}
  * 
  * @author Leonid Boytsov
  *
@@ -115,13 +115,19 @@ public class StructQueryParse {
    * 
    * A helper comparison function used only for testing.
    * 
-   * @param tokens
-   * @param labels
-   * @param types
-   * @param constrType
-   * @param dependId
-   * @param connectQty
-   * @return true if equal
+   * @param tokens_             an tokens/annotations.
+   * @param labels_             an array of labels (used for references).
+   * @param types_              an array of serialized types.
+   * @param constrType_         constraint types, each
+   *                            array element is a string with comma separated
+   *                            serialized constraints. 
+   * @param dependId_           dependent ids for constrained/child elements,
+   *                            each array element is a string with comma separated
+   *                            dependency ids. 
+   * @param connectQty_         connectedness numbers.
+   * 
+   * @return true if provided parameters match an internal representation of
+   *         a parsed query.
    */
   public boolean compareTo(
                     String tokens_[],
@@ -214,7 +220,7 @@ public class StructQueryParse {
    * Check if the element label contains only valid symbols.
    * 
    * @param label
-   * @return
+   * @return true if all elements are valid and false otherwise.
    */
   private boolean checkLabelSymbols(String label) {
     return label.indexOf(',') == -1 &&

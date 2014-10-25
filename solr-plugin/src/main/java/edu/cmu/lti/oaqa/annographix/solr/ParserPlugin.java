@@ -58,10 +58,13 @@ class StructRetrQParser extends QParser {
   String    mTextFieldName;
   /** a name of the field that stores annotations for the text field mTextFieldName */
   String    mAnnotFieldName;
+  /** A label of a top-level covering annotation; equal to null, if there is none. */
+  String    mCoverAnnotLabel;
   
   public final static String PARAM_BOOST    = "boost";
   public final static String PARAM_VERSION  = "ver";
   public final static String PARAM_SPAN     = "span";
+  public final static String PARAM_COVER_ANNOT = "cover_annot";
   public final static String PARAM_TEXT_FIELD = UtilConst.CONFIG_TEXT4ANNOT_FIELD;
   public final static String PARAM_ANNOT_FIELD = UtilConst.CONFIG_ANNOTATION_FIELD;
   
@@ -79,11 +82,14 @@ class StructRetrQParser extends QParser {
     
     if (localParams.getInt(PARAM_SPAN) != null) 
       mSpan = localParams.getInt(PARAM_SPAN);
+
+    mAnnotFieldName = localParams.get(PARAM_ANNOT_FIELD,
+        UtilConst.DEFAULT_ANNOT_FIELD);
+    
+    mCoverAnnotLabel = localParams.get(PARAM_COVER_ANNOT);
     
     mTextFieldName = localParams.get(PARAM_TEXT_FIELD, 
                                      UtilConst.DEFAULT_TEXT4ANNOT_FIELD);
-    mAnnotFieldName = localParams.get(PARAM_ANNOT_FIELD,
-                                     UtilConst.DEFAULT_ANNOT_FIELD);
   }  
 
   @Override
@@ -107,6 +113,7 @@ class StructRetrQParser extends QParser {
   }
   
   private Query parseVer3(String text) throws SyntaxError {       
-    return new StructQueryVer3(text, mSpan, mTextFieldName, mAnnotFieldName);
+    return new StructQueryVer3(text, mSpan, mCoverAnnotLabel,
+                               mTextFieldName, mAnnotFieldName);
   }  
 }

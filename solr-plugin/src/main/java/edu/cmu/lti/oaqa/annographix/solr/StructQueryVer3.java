@@ -45,8 +45,12 @@ class StructQueryVer3 extends Query {
   private String    mAnnotFieldName;
   /** A size (in the # of chars) of the window where we look for occurrences. */
   private int       mSpan;
+  /** A label of a top-level covering annotation; equal to null, if there is none. */
+  private String    mCoverAnnotLabel;
   /** Lucene term objects */
   private ArrayList<Term>   mTerms = new ArrayList<Term>();
+  /** A term for the covering annotation, or null, if there is none. */
+  private Term              mCoverAnnotTerm;
   
   /** a parsed query */
   private final StructQueryParse              mQueryParse;
@@ -58,20 +62,28 @@ class StructQueryVer3 extends Query {
   /**
    * Constructor.
    * 
-   * @param text            A text of query.
-   * @param span            A size (in the # of chars) of the window where we
-   *                        look for occurrences.
-   * @param textFieldName   A name of the text field that is annotated.
-   * @param annotFieldName  A name of the field that stores annotations for the text field mTextFieldName
+   * @param text                A text of query.
+   * @param span                A size (in the # of chars) of the window where we
+   *                            look for occurrences.
+   * @param coverAnnotLabel 
+   * @param textFieldName       A name of the text field that is annotated.
+   * @param annotFieldName      A name of the field that stores annotations for 
+   *                            the text field mTextFieldName.
    * @throws SyntaxError
    */
   public StructQueryVer3(String text, 
-                         int span, 
+                         int    span,
+                         String coverAnnotLabel,
                          String textFieldName, 
                          String annotFieldName)
                          throws SyntaxError
   {
     mQueryText = text;
+    
+    mSpan = span;
+    mCoverAnnotLabel = coverAnnotLabel;
+    
+    
     mTextFieldName = textFieldName;
     mAnnotFieldName = annotFieldName;
     
@@ -88,6 +100,11 @@ class StructQueryVer3 extends Query {
                          )
                 );
     }
+    
+    if (mCoverAnnotLabel != null) {
+      mCoverAnnotTerm = new Term(mAnnotFieldName, mCoverAnnotLabel);
+    }
+
   }
   
   @Override
@@ -125,6 +142,7 @@ class StructQueryVer3 extends Query {
     private final Similarity.SimWeight                  mWeightAnnotField;
     private transient ArrayList<TermContext>            mTermContexts =
                                                 new ArrayList<TermContext>();
+    private transient TermContext                       mCoverAnnotContext;
     
     public StructQueryVer3Weight(IndexSearcher searcher) throws IOException {
       mSimilarity = searcher.getSimilarity();
@@ -149,6 +167,10 @@ class StructQueryVer3 extends Query {
           termStatsAnnotFieldLst.add(stat);
           
       }
+      
+      if (mCoverAnnotTerm != null)
+        mCoverAnnotContext = TermContext.build(readerContext, mCoverAnnotTerm);
+      
       // We need to compute two similarity weights for two different fields
       TermStatistics[] termStatsTextField = 
                               new TermStatistics[termStatsTextFieldLst.size()];
@@ -186,7 +208,88 @@ class StructQueryVer3 extends Query {
     public void normalize(float queryNorm, float topLevelBoost) {
       throw new RuntimeException(
           "Bug: normalize() is not supposed to be called ");
-    }    
+    }
+    
+    /**
+     * 
+     * A helper function to initialize either a regular field or an annotation field posting.
+     * 
+     * @param context                   index reader context 
+     *                                   (from the scorer's constructor).
+     * @param liveDocs
+     * @param token                     term/token text.
+     * @param tokenType                 token type (regular text or annotation).
+     * @param t                         initialized object of the class Term.
+     * @param termCtx                   a term context.
+     * @param termTextFieldEnum         an auxiliary iterator (for text fields).
+     * @param termAnnotFieldEnum        an auxiliary iterator (for annotation fields).
+     * @return                          a pointer to an initialized posting object.
+     * 
+     * @throws IOException
+     */
+    private DocsAndPositionsEnum initPosting(AtomicReaderContext context,
+                                             final Bits          liveDocs,
+                                             String              token,
+                                             FieldType           tokenType,
+                                             Term                t,
+                                             TermContext         termCtx,
+                                             final TermsEnum termTextFieldEnum,
+                                             final TermsEnum termAnnotFieldEnum ) 
+                                             throws IOException {
+      final AtomicReader        reader = context.reader();                                             
+      String termDesc = "'" + token + "' type: " + tokenType;
+      final TermState state = termCtx.get(context.ord);
+      
+      if (state == null) { // term doesn't exist in this segment 
+        if (!termNotInReader(reader, t)) {
+          throw new RuntimeException("Bug: no termstate found but term " + 
+                                     termDesc + " exists in reader");
+        }
+        return null;
+      }
+      
+      DocsAndPositionsEnum    post = null;
+        
+      if (tokenType == FieldType.FIELD_TEXT) {
+        termTextFieldEnum.seekExact(t.bytes(), state);
+        // Text field must include offsets
+        post = termTextFieldEnum.docsAndPositions(liveDocs, null,
+                                      DocsAndPositionsEnum.FLAG_OFFSETS |
+                                      DocsAndPositionsEnum.FLAG_FREQS);
+        if (null == post) {
+          if (!termTextFieldEnum.seekExact(t.bytes())) {
+            throw new RuntimeException("Bug: no termstate found but term " + 
+                                        termDesc + " exists in reader");
+          }
+          // term does exist, but has no positions and/or offsets
+          throw new IllegalStateException("field \"" + t.field() + 
+              "\" was indexed without position and/or offset data; cannot run "
+              // Query text comes from the enclosing class
+              + " sub-query: '" + mQueryText + "'" 
+              + " (term=" + t.text() + ")");
+        }
+      } else {
+        // Annotation field must include payloads
+        termAnnotFieldEnum.seekExact(t.bytes(), state);
+        post = termAnnotFieldEnum.docsAndPositions(liveDocs, null, 
+                                      DocsAndPositionsEnum.FLAG_PAYLOADS |
+                                      DocsAndPositionsEnum.FLAG_FREQS);
+        if (null == post) {
+          if (!termAnnotFieldEnum.seekExact(t.bytes())) {
+            throw new RuntimeException("Bug: no termstate found but term " + 
+                                        termDesc + " exists in reader");
+          }
+          // term does exist, but has no positions and/or payloads
+          throw new IllegalStateException("field \"" + t.field() + 
+              "\" was indexed without position and/or payload data; cannot run "
+              // Query text comes from the enclosing class
+              + " sub-query: '" + mQueryText + "'" 
+              + " (term=" + t.text() + ")");            
+        }         
+      }
+      return post;
+    }
+
     
     private boolean termNotInReader(AtomicReader reader, Term term) throws IOException {
       return reader.docFreq(term) == 0;
@@ -200,9 +303,10 @@ class StructQueryVer3 extends Query {
 
       final AtomicReader        reader = context.reader();
       final Bits                liveDocs = acceptDocs;
-      DocsAndPositionsEnum[]    postingsEnum = 
+      DocsAndPositionsEnum[]    postings = 
                                 // mTerms is from the enclosing class
                                        new DocsAndPositionsEnum[mTerms.size()];
+      DocsAndPositionsEnum      coverAnnotPost;
       
       // mTextFieldName & mAnnotFieldName come from the enclosing class 
       final Terms fieldTermsTextField = reader.terms(mTextFieldName);
@@ -219,61 +323,28 @@ class StructQueryVer3 extends Query {
       final TermsEnum termAnnotFieldEnum = fieldTermsTextField.iterator(null);
       
       for (int i = 0; i < mTerms.size(); ++i) {
-        String termDesc = "'" + mTokens.get(i) + "' type: " + mTokenTypes.get(i);
-        final Term t = mTerms.get(i);
-        final TermState state = mTermContexts.get(i).get(context.ord);
-        
-        if (state == null) { // term doesn't exist in this segment 
-          if (!termNotInReader(reader, t)) {
-            throw new RuntimeException("Bug: no termstate found but term " + 
-                                       termDesc + " exists in reader");
-          }
-          return null;
-        }
-        
-        DocsAndPositionsEnum    post = null;
-        
-        if (mTokenTypes.get(i) == FieldType.FIELD_TEXT) {
-          termTextFieldEnum.seekExact(t.bytes(), state);
-          // Text field must include offsets
-          post = termTextFieldEnum.docsAndPositions(liveDocs, null,
-                                        DocsAndPositionsEnum.FLAG_OFFSETS |
-                                        DocsAndPositionsEnum.FLAG_FREQS);
-          if (null == post) {
-            if (!termTextFieldEnum.seekExact(t.bytes())) {
-              throw new RuntimeException("Bug: no termstate found but term " + 
-                                          termDesc + " exists in reader");
-            }
-            // term does exist, but has no positions and/or offsets
-            throw new IllegalStateException("field \"" + t.field() + 
-                "\" was indexed without position and/or offset data; cannot run "
-                // Query text comes from the enclosing class
-                + " sub-query: '" + mQueryText + "'" 
-                + " (term=" + t.text() + ")");
-          }
-        } else {
-          // Annotation field must include payloads
-          termAnnotFieldEnum.seekExact(t.bytes(), state);
-          post = termAnnotFieldEnum.docsAndPositions(liveDocs, null, 
-                                        DocsAndPositionsEnum.FLAG_PAYLOADS |
-                                        DocsAndPositionsEnum.FLAG_FREQS);
-          if (null == post) {
-            if (!termAnnotFieldEnum.seekExact(t.bytes())) {
-              throw new RuntimeException("Bug: no termstate found but term " + 
-                                          termDesc + " exists in reader");
-            }
-            // term does exist, but has no positions and/or payloads
-            throw new IllegalStateException("field \"" + t.field() + 
-                "\" was indexed without position and/or payload data; cannot run "
-                // Query text comes from the enclosing class
-                + " sub-query: '" + mQueryText + "'" 
-                + " (term=" + t.text() + ")");            
-          }          
-        }
-        postingsEnum[i] = post;
+        postings[i] = initPosting(context,
+                                  liveDocs,
+                                  mTokens.get(i),
+                                  mTokenTypes.get(i),
+                                  mTerms.get(i),
+                                  mTermContexts.get(i),
+                                  termTextFieldEnum,
+                                  termAnnotFieldEnum);
+      }
+      if (mCoverAnnotContext != null) {
+        coverAnnotPost = initPosting(context,
+                                    liveDocs,
+                                    mCoverAnnotLabel,
+                                    FieldType.FIELD_ANNOTATION,
+                                    mCoverAnnotTerm,
+                                    mCoverAnnotContext,
+                                    null /* don't need it here */,
+                                    termAnnotFieldEnum);
       }
       
-      **** CONTINUE HERE *****
+      //**** CONTINUE HERE *****
+      return null;
     }
     
     @Override

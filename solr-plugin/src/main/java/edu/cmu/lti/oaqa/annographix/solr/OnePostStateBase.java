@@ -70,7 +70,7 @@ public abstract class OnePostStateBase implements Comparable <OnePostStateBase> 
   /**
    * @return a current document id.
    */
-  public int getDocId() { return mDocId; }
+  public int getDocID() { return mDocId; }
   /**
    * @return an i-th element
    */

@@ -49,7 +49,7 @@ class StructScorerVer3 extends Scorer {
   private SimScorer mDocScorerTextField; 
   private SimScorer mDocScorerAnnotField;
   private int       mCurrDocId = -1;
-  private int       mSpan;
+  private int       mSpan = Integer.MAX_VALUE;
   private int       mNumMatches = 0;
   private OnePostStateBase[] mAllPosts;
   private OnePostStateBase   mCoverAnnotPost = null;
@@ -99,6 +99,7 @@ class StructScorerVer3 extends Scorer {
     
     Arrays.sort(mAllPosts);
     /** 2. Sorting for efficient search within documents. */
+    /*
     ArrayList<QueryGraphNode>  allGraphNodes = new ArrayList<QueryGraphNode>();
     
     for (int i = 0; i < postings.length; ++i) {
@@ -107,6 +108,7 @@ class StructScorerVer3 extends Scorer {
       which may also be inefficient??? Can I reuse the OnePostStateBase ???
       *****
     }
+    */
   }
 
   /* (non-Javadoc)
@@ -163,6 +165,52 @@ class StructScorerVer3 extends Scorer {
    */
   @Override
   public int advance(int target) throws IOException {
+    // first (least-costly, i.e., rarest) term
+    int doc = mAllPosts[0].advance(target);
+
+    if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+      return mCurrDocId = doc;
+    }
+
+    while(true) {
+      // second, etc terms 
+      int i = 1;
+      while(i < mAllPosts.length) {
+        OnePostStateBase  td = mAllPosts[i];
+        int doc2 = td.getDocID();
+
+        if (doc2 < doc) {
+          doc2 = td.advance(doc);
+        }
+
+        if (doc2 > doc) {
+          break;
+        }
+        i++;
+      }
+
+      if (i == mAllPosts.length) {
+        /*
+         *  found all elements in a document, 
+         *  let's check compute the number of in-document occurrence.
+         */
+        mCurrDocId = doc;
+        mNumMatches = computeFreq();
+
+        if (mNumMatches != 0) {
+          return mCurrDocId;
+        }
+      }
+
+      doc = mAllPosts[0].nextDoc();
+
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        return mCurrDocId = doc;
+      }
+    }  
+  }
+
+  private int computeFreq() {
     // TODO Auto-generated method stub
     return 0;
   }

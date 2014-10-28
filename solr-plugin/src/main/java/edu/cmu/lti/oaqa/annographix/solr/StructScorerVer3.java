@@ -29,6 +29,44 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 
 /**
+ * A comparator class that helps sort postings in the order of increasing cost.
+ * 
+ * @author Leonid Boytsov
+ *
+ */
+class SortPostByCost implements Comparator<OnePostStateBase> {
+
+  @Override
+  public int compare(OnePostStateBase o1, OnePostStateBase o2) {
+    long d = o1.getPostCost() - o2.getPostCost();
+    return d == 0 ? 0 : (d < 0 ? -1 : 1);    
+  }  
+}
+
+/**
+ * A comparator class that helps sort postings first in the order of
+ * decreasing connectedness, and next in the order 
+ */
+class SortPostByConnectQtyAndCost implements Comparator<OnePostStateBase> {
+
+  @Override
+  public int compare(OnePostStateBase o1, OnePostStateBase o2) {
+    if (o1.getConnectQty() != o2.getConnectQty()) {
+    /*
+     *  if the first element has more connections, we return a value < 0, 
+     *  so that this entry will be ranked before entries with a smaller
+     *  number of connections.
+     */
+      return o2.getConnectQty() - o1.getConnectQty();
+    }    
+    
+    long d = o1.getPostCost() - o2.getPostCost();
+    return d == 0 ? 0 : (d < 0 ? -1 : 1);    
+  }  
+}
+
+
+/**
  * 
  * A custom scorer class.
  * <p>This is workhorse class that does most of the hard work in three steps:</p>
@@ -45,15 +83,29 @@ import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
  * @author Leonid Boytsov
  *
  */
-class StructScorerVer3 extends Scorer {
+public class StructScorerVer3 extends Scorer {
   private SimScorer mDocScorerTextField; 
   private SimScorer mDocScorerAnnotField;
   private int       mCurrDocId = -1;
   private int       mSpan = Integer.MAX_VALUE;
   private int       mNumMatches = 0;
-  private OnePostStateBase[] mAllPosts;
+  /** 
+   * All postings (+the posting of the covering annotation if the latter exists)
+   * sorted in the order of increasing cost.
+   */
+  private OnePostStateBase[] mAllPostsSortedByCost;
+  /**
+   * Token/annotation only postings sorted first in the order of decreasing
+   * connectedness, then in the order of increasing posting cost.
+   */
+  private OnePostStateBase[] mPostSortedByConnectCost;
+  /**
+   * A number of connected postings.
+   */
+  int     postConnectQty = 0;
+  
   private OnePostStateBase   mCoverAnnotPost = null;
-  private QueryGraphNode[]   mAllGraphNodes;
+
   /**
    * @param weight          An instance of the weight class that created this scorer.
    * @param mQueryParse     A parsed query.
@@ -74,41 +126,62 @@ class StructScorerVer3 extends Scorer {
     mDocScorerAnnotField = docScorerAnnotField;
     mDocScorerTextField = docScorerTextField;
     mSpan = span;
- 
+    
     /**
-     * We need to package postings in two different ways.
-     * 1) Embed them into objects of the type OnePostStateBase and sort an
-     * array of the type OnePostStateBase[]. This will allow us to leapfrog
-     * efficiently in the function {@see #advance()}.
-     * 2) Further embed instances of the type OnePostStateBase into the objects
-     * of the type QueryGraphNode. This allows us to resort postings differently.
-     * In addition, the latter array won't include a covering annotation.
+     * We need to wrap up postings using objects of the type OnePostStateBase.
+     * Then, we create two arrays of the type OnePostStateBase sorted differently.
+     * 1) The first array should include all the postings including the
+     * posting for the covering annotation (if it exists). This array
+     * will be sorted in the increasing order of postings costs, which would 
+     * allow us to leapfrog efficiently in the function {@see #advance()}.
+     * 
+     * 2) The second array should not contain a covering annotation and may be sorted
+     * differently. More specifically, the comparison function will first 
+     * compare the number of postings connected to the given nodes. A posting
+     * with a larger number of connected postings is placed before a posting
+     * with a smaller number of connected postings. In the case of a tie (i.e.,
+     * an equal number of connected postings) a posting with the smaller cost
+     * should be placed earlier.
      */
     
-    /** 1. Sorting for efficient {@see #advance()}. */
-    ArrayList<OnePostStateBase> allPostList = new ArrayList<OnePostStateBase>();
-    for(int i = 0; i < queryParse.getTokens().size(); ++i) 
-      allPostList.add(
+    /** 1. Sorting for efficient leapfrogging. */
+    int tokQty = queryParse.getTokens().size();
+    
+    ArrayList<OnePostStateBase> allPostListUnsorted 
+                                            = new ArrayList<OnePostStateBase>();
+
+    for(int i = 0; i < tokQty; ++i) 
+      allPostListUnsorted.add(
           OnePostStateBase.createPost(postings[i], queryParse.getTypes().get(i))
       );
-    if (coverAnnotPost != null)
+    if (coverAnnotPost != null) {
       mCoverAnnotPost = 
         OnePostStateBase.createPost(coverAnnotPost, FieldType.FIELD_ANNOTATION);
-    mAllPosts = new OnePostStateBase[allPostList.size()];
-    allPostList.toArray(mAllPosts);
-    
-    Arrays.sort(mAllPosts);
-    /** 2. Sorting for efficient search within documents. */
-    /*
-    ArrayList<QueryGraphNode>  allGraphNodes = new ArrayList<QueryGraphNode>();
-    
-    for (int i = 0; i < postings.length; ++i) {
-      **** constructing allGraphNodes won't be simple
-      and in fact maybe I don't really need another wrapper class,
-      which may also be inefficient??? Can I reuse the OnePostStateBase ???
-      *****
+      allPostListUnsorted.add(mCoverAnnotPost);
     }
-    */
+    mAllPostsSortedByCost = new OnePostStateBase[allPostListUnsorted.size()];
+    allPostListUnsorted.toArray(mAllPostsSortedByCost);
+    
+    Arrays.sort(mAllPostsSortedByCost, new SortPostByCost());
+    
+    /** 2. Sorting for efficient search within documents. */
+    
+    // First we need create arrays of constraints
+    mPostSortedByConnectCost = new OnePostStateBase[tokQty];    
+    for(int i = 0; i < tokQty; ++i) {
+      mPostSortedByConnectCost[i] = allPostListUnsorted.get(i);
+      ArrayList<OnePostStateBase>   constrNode = new ArrayList<OnePostStateBase>(); 
+      
+      for (int depId : queryParse.getDependIds(i))
+        constrNode.add(allPostListUnsorted.get(depId));
+      
+      mPostSortedByConnectCost[i].setConstraints(
+          queryParse.getConnectQty(i), 
+          queryParse.getConstrTypes(i), 
+          constrNode);
+    }
+
+    Arrays.sort(mPostSortedByConnectCost, new SortPostByConnectQtyAndCost());
   }
 
   /* (non-Javadoc)
@@ -166,7 +239,7 @@ class StructScorerVer3 extends Scorer {
   @Override
   public int advance(int target) throws IOException {
     // first (least-costly, i.e., rarest) term
-    int doc = mAllPosts[0].advance(target);
+    int doc = mAllPostsSortedByCost[0].advance(target);
 
     if (doc == DocIdSetIterator.NO_MORE_DOCS) {
       return mCurrDocId = doc;
@@ -175,8 +248,8 @@ class StructScorerVer3 extends Scorer {
     while(true) {
       // second, etc terms 
       int i = 1;
-      while(i < mAllPosts.length) {
-        OnePostStateBase  td = mAllPosts[i];
+      while(i < mAllPostsSortedByCost.length) {
+        OnePostStateBase  td = mAllPostsSortedByCost[i];
         int doc2 = td.getDocID();
 
         if (doc2 < doc) {
@@ -189,7 +262,7 @@ class StructScorerVer3 extends Scorer {
         i++;
       }
 
-      if (i == mAllPosts.length) {
+      if (i == mAllPostsSortedByCost.length) {
         /*
          *  found all elements in a document, 
          *  let's check compute the number of in-document occurrence.
@@ -202,7 +275,7 @@ class StructScorerVer3 extends Scorer {
         }
       }
 
-      doc = mAllPosts[0].nextDoc();
+      doc = mAllPostsSortedByCost[0].nextDoc();
 
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
         return mCurrDocId = doc;

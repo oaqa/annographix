@@ -391,7 +391,7 @@ public class StructQueryVer3 extends Query {
                                 new Explanation(freq, "annotFieldFreq=" + freq));          
           result.addDetail(scoreExplanationAnnotField);          
 
-          // 3. The value is a sum
+          // 3. The value is a sum of similarities for two fields
           result.setValue(
                           scoreExplanationTextField.getValue() + 
                           scoreExplanationAnnotField.getValue()

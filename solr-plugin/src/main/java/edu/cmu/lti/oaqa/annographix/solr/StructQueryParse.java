@@ -53,7 +53,34 @@ public class StructQueryParse {
   public final ArrayList<FieldType> getTypes() {
     return mTypes;
   }
+  
+  /**
+   * @param     index   a token/annotation index.
+   * @return    a number of connected postings.
+   */
+  public int getConnectQty(int index) {
+    return mConnectQty.get(index);
+  }
 
+
+  /**
+   * @param     index   a token/annotation index.
+   * @return    a list of constraints specific to the token
+   */
+  public final ArrayList<ConstraintType> getConstrTypes(int index) {
+    return mConstrType.get(index);
+  }
+  
+  /**
+   * @param     index   a token/annotation index.
+   * @return    a list of token ids for which there exist constraints,
+   *            these constraints are all associated with the current posting,
+   *            e.g., the annotation/token associated with the posting can be
+   *            a parent of the dependent/constraint posting.
+   */
+   public final ArrayList<Integer> getDependIds(int index) {
+     return mDependId.get(index);
+   }  
   
   /**
    * 

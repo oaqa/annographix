@@ -20,6 +20,7 @@
 package edu.cmu.lti.oaqa.annographix.solr;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.apache.lucene.index.DocsAndPositionsEnum;
 /*
@@ -52,7 +53,7 @@ import edu.stanford.nlp.util.ArrayUtils;
  * @author Leonid Boytsov
  *
  */
-public abstract class OnePostStateBase implements Comparable <OnePostStateBase> {
+public abstract class OnePostStateBase {
   public static int NO_MORE_DOCS = org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
   // TODO change to a larger value
   protected static int INIT_SIZE = 1;
@@ -79,6 +80,14 @@ public abstract class OnePostStateBase implements Comparable <OnePostStateBase> 
    * @return a number of elements in a current document.
    */
   public int getQty() { return mQty; }
+  /**
+   * @return a cost associated with the posting.
+   */
+  public long getPostCost() { return mPosting.cost(); }
+  /**
+   * @return a number of connected postings.
+   */
+  public int getConnectQty() { return mConnectQty; }
   
   /**
    * Move to the first document with id >= docId.
@@ -111,19 +120,35 @@ public abstract class OnePostStateBase implements Comparable <OnePostStateBase> 
     return mDocId;
   }  
   
-  @Override
   /**
-   * This function is used to order postings for efficient leapfrogging-based
-   * intersection of postings.
+   * Memorize constraints associated with the given posting.
+   * <p>The list of constraints includes a list of constraint types,
+   * as well as the list of constraint nodes. Unfortunately, it is 
+   * not possible to initialize such a list in a constructor, because
+   * some of the elements will not exist at the time when constructor is
+   * called. 
+   * 
+   * @param connectQty      an overall number of connected 
+   *                        postings (not necessarily directly adjacent nodes).
+   * @param constrType      a list of constraint types.
+   * @param constrNode      a list of constraint/dependent nodes.
+   * @throws Exception
    */
-  public int compareTo(OnePostStateBase o) {
-    long d = getPostCost() - o.getPostCost();
-    return d == 0 ? 0 : (d < 0 ? -1 : 1);
+  public void setConstraints(int connectQty,
+                             ArrayList<StructQueryParse.ConstraintType> constrType,
+                             ArrayList<OnePostStateBase> constrNode) {
+    mConnectQty = connectQty;
+    if (constrNode.size() != constrType.size()) {
+      throw new RuntimeException("Bug: constrType.size() != constrNode.size()");
+    }
+    mConstrType = new StructQueryParse.ConstraintType[constrType.size()];
+    mConstrNode = new OnePostStateBase[constrNode.size()];
+    
+    for (int i = 0; i < constrType.size(); ++i) {
+      mConstrType[i] = constrType.get(i);
+      mConstrNode[i] = constrNode.get(i);
+    }    
   }
-
-  public long getPostCost() {
-    return mPosting.cost();
-  }  
   
   /**
    * This function read one-document tokens/annotations start and end offsets.
@@ -152,6 +177,10 @@ public abstract class OnePostStateBase implements Comparable <OnePostStateBase> 
   protected int                     mDocId;
   protected int                     mQty = 0;
   protected ElemInfoData            mElemInfo[] = new ElemInfoData[0];  
+  
+  protected StructQueryParse.ConstraintType[]     mConstrType = null;
+  protected OnePostStateBase[]                    mConstrNode = null;
+  protected int                                   mConnectQty = 0;
 }
 
 /**

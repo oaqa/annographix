@@ -122,11 +122,14 @@ public abstract class OnePostStateBase {
   
   /**
    * Memorize constraints associated with the given posting.
-   * <p>The list of constraints includes a list of constraint types,
+   * 
+   * <p>
+   * The list of constraints includes a list of constraint types,
    * as well as the list of constraint nodes. Unfortunately, it is 
    * not possible to initialize such a list in a constructor, because
-   * some of the elements will not exist at the time when constructor is
-   * called. 
+   * some of the elements may not exist at the time when constructor is
+   * called.
+   * </p>
    * 
    * @param connectQty      an overall number of connected 
    *                        postings (not necessarily directly adjacent nodes).

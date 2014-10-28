@@ -29,44 +29,6 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 
 /**
- * A comparator class that helps sort postings in the order of increasing cost.
- * 
- * @author Leonid Boytsov
- *
- */
-class SortPostByCost implements Comparator<OnePostStateBase> {
-
-  @Override
-  public int compare(OnePostStateBase o1, OnePostStateBase o2) {
-    long d = o1.getPostCost() - o2.getPostCost();
-    return d == 0 ? 0 : (d < 0 ? -1 : 1);    
-  }  
-}
-
-/**
- * A comparator class that helps sort postings first in the order of
- * decreasing connectedness, and next in the order 
- */
-class SortPostByConnectQtyAndCost implements Comparator<OnePostStateBase> {
-
-  @Override
-  public int compare(OnePostStateBase o1, OnePostStateBase o2) {
-    if (o1.getConnectQty() != o2.getConnectQty()) {
-    /*
-     *  if the first element has more connections, we return a value < 0, 
-     *  so that this entry will be ranked before entries with a smaller
-     *  number of connections.
-     */
-      return o2.getConnectQty() - o1.getConnectQty();
-    }    
-    
-    long d = o1.getPostCost() - o2.getPostCost();
-    return d == 0 ? 0 : (d < 0 ? -1 : 1);    
-  }  
-}
-
-
-/**
  * 
  * A custom scorer class.
  * <p>This is workhorse class that does most of the hard work in three steps:</p>
@@ -105,6 +67,7 @@ public class StructScorerVer3 extends Scorer {
   int     postConnectQty = 0;
   
   private OnePostStateBase   mCoverAnnotPost = null;
+  private long mCost = 0;
 
   /**
    * @param weight          An instance of the weight class that created this scorer.
@@ -150,10 +113,11 @@ public class StructScorerVer3 extends Scorer {
     ArrayList<OnePostStateBase> allPostListUnsorted 
                                             = new ArrayList<OnePostStateBase>();
 
-    for(int i = 0; i < tokQty; ++i) 
+    for(int i = 0; i < tokQty; ++i) { 
       allPostListUnsorted.add(
           OnePostStateBase.createPost(postings[i], queryParse.getTypes().get(i))
       );
+    }
     if (coverAnnotPost != null) {
       mCoverAnnotPost = 
         OnePostStateBase.createPost(coverAnnotPost, FieldType.FIELD_ANNOTATION);
@@ -163,6 +127,8 @@ public class StructScorerVer3 extends Scorer {
     allPostListUnsorted.toArray(mAllPostsSortedByCost);
     
     Arrays.sort(mAllPostsSortedByCost, new SortPostByCost());
+    // a heuristic let the cost be equal to the size of the shortest posting
+    mCost = mAllPostsSortedByCost[0].getPostCost();
     
     /** 2. Sorting for efficient search within documents. */
     
@@ -184,26 +150,25 @@ public class StructScorerVer3 extends Scorer {
     Arrays.sort(mPostSortedByConnectCost, new SortPostByConnectQtyAndCost());
   }
 
-  /* (non-Javadoc)
-   * @see org.apache.lucene.search.Scorer#score()
+  /**
+   * @return a score associated with a given number of matches inside the document.
    */
   @Override
   public float score() throws IOException {
-    // TODO Auto-generated method stub
     return mDocScorerAnnotField.score(mCurrDocId, freq()) +
            mDocScorerTextField.score(mCurrDocId, freq());
   }
 
-  /* (non-Javadoc)
-   * @see org.apache.lucene.index.DocsEnum#freq()
+  /**
+   * @return a number of matches inside the document.
    */
   @Override
   public int freq() throws IOException {
     return mNumMatches;
   }
 
-  /* (non-Javadoc)
-   * @see org.apache.lucene.search.DocIdSetIterator#docID()
+  /**
+   * @return the current document id.
    */
   @Override
   public int docID() {
@@ -233,8 +198,10 @@ public class StructScorerVer3 extends Scorer {
     return advance(mCurrDocId + 1);  
   }
 
-  /* (non-Javadoc)
-   * @see org.apache.lucene.search.DocIdSetIterator#advance(int)
+  /**
+   * Move to the first document with id >= target.
+   * 
+   * @param target      find a document at least this large.
    */
   @Override
   public int advance(int target) throws IOException {
@@ -264,8 +231,9 @@ public class StructScorerVer3 extends Scorer {
 
       if (i == mAllPostsSortedByCost.length) {
         /*
-         *  found all elements in a document, 
-         *  let's check compute the number of in-document occurrence.
+         *  found all query elements in a document, 
+         *  let's compute a number of matches inside
+         *  this document
          */
         mCurrDocId = doc;
         mNumMatches = computeFreq();
@@ -283,17 +251,63 @@ public class StructScorerVer3 extends Scorer {
     }  
   }
 
+  /**
+   * This function computes a number of spans (as represented by the 
+   * maximum span size or a covering annotation) where a query graph
+   * matches a graph of document tokens.
+   *  
+   * @return    number of matches inside a document.
+   */
   private int computeFreq() {
     // TODO Auto-generated method stub
     return 0;
   }
 
-  /* (non-Javadoc)
-   * @see org.apache.lucene.search.DocIdSetIterator#cost()
+  /** 
+   * Returns the estimated cost of this 
+   * scorer {@see org.apache.lucene.search.DocIdSetIterator#cost()}.
    */
   @Override
   public long cost() {
-    // TODO Auto-generated method stub
-    return 0;
+    return mCost ;
   }
+  
+  /**
+   * A comparator class that helps sort postings in the order of increasing cost.
+   * 
+   * @author Leonid Boytsov
+   *
+   */
+  class SortPostByCost implements Comparator<OnePostStateBase> {
+
+    @Override
+    public int compare(OnePostStateBase o1, OnePostStateBase o2) {
+      long d = o1.getPostCost() - o2.getPostCost();
+      return d == 0 ? 0 : (d < 0 ? -1 : 1);    
+    }  
+  }
+
+  /**
+   * A comparator class that helps sort postings first in the order of
+   * decreasing connectedness, and next in the order 
+   */
+  class SortPostByConnectQtyAndCost implements Comparator<OnePostStateBase> {
+
+    @Override
+    public int compare(OnePostStateBase o1, OnePostStateBase o2) {
+      if (o1.getConnectQty() != o2.getConnectQty()) {
+      /*
+       *  if the first element has more connections, we return a value < 0, 
+       *  so that this entry will be ranked before entries with a smaller
+       *  number of connections.
+       */
+        return o2.getConnectQty() - o1.getConnectQty();
+      }    
+      
+      long d = o1.getPostCost() - o2.getPostCost();
+      return d == 0 ? 0 : (d < 0 ? -1 : 1);    
+    }  
+  }
+  
 }
+

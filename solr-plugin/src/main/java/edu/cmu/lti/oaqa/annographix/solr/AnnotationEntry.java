@@ -67,7 +67,10 @@ public class AnnotationEntry implements Comparable<AnnotationEntry> {
     if (mStartChar != o.mStartChar) {
       return mStartChar - o.mStartChar;
     }
-    // If the current object has smaller size, it would go earlier
+    /*
+     *  If start offsets are equal, but the current object 
+     *  has smaller size, it will go earlier
+     */
     return mCharLen - o.mCharLen;
   }
 }

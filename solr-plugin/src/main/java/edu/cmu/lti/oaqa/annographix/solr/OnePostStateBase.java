@@ -21,32 +21,13 @@ package edu.cmu.lti.oaqa.annographix.solr;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 
 import org.apache.lucene.index.DocsAndPositionsEnum;
-/*
- *  Copyright 2014 Carnegie Mellon University
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *  
- *  The author re-used some of the code from org.apache.lucene.search.PhraseQuery,
- *  which was also licensed under the Apache License 2.0.
- *  
- */
-import org.apache.lucene.search.DocIdSetIterator;
 
 import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.ConstraintType;
 import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
-import edu.stanford.nlp.util.ArrayUtils;
 
 /** 
  * This a base helper class to read annotation and token info from posting lists. 
@@ -88,14 +69,17 @@ public abstract class OnePostStateBase {
    * @return a current document id.
    */
   public int getDocID() { return mDocId; }
+  
   /**
    * @return an i-th element
    */
-  public ElemInfoData getElement(int i) { return mElemInfo[i]; }
+  public ElemInfoData getElement(int i) { return mSortedElemInfo[i]; }
+  
   /**
    * @return a current element
    */
-  public ElemInfoData getCurrElement() { return mElemInfo[mCurrElemIndx]; }
+  public ElemInfoData getCurrElement() { return mSortedElemInfo[mCurrElemIndx]; }
+  
   /**
    * Changes the internal index pointing to the current element, 
    * without checking if the index is invalid.
@@ -105,19 +89,58 @@ public abstract class OnePostStateBase {
   public void setCurrElemIndex(int index) {
     mCurrElemIndx = index;
   }
-
+  
   /**
    * @return an internal element index
    */
   public int getCurrElemIndex() { return mCurrElemIndx; }
+  
+  /**
+   * Find an element with an offset larger than the specified one.
+   * <p>
+   * This function assumes that elements are sorted by in the order of 
+   * non-decreasing offsets. It is not thread-safe, because it is
+   * reusing the search key (we don't want to allocate memory every
+   * time we call this function). 
+   * </p> 
+   *
+   * @param     minOffset   find elements with offset > minOffset.
+   * @param     minIndx     search among elements with the index >= minIndx
+   *  
+   * @return    the index (>= minIndx) of the first element 
+   *            whose offset > minOffset or {@link #getQty()} if such
+   *            element cannot be found. 
+   *             
+   *  
+   */
+  public int findElemIndexWithLargerOffset(int minOffset, int minIndx) {
+    mSearchKey.mStartOffset = minOffset;
+    int res = Arrays.binarySearch(mSortedElemInfo, 
+                              Math.max(0, minIndx), mQty,
+                              mSearchKey, mOffsetComp);
+    if (res >= 0) {
+      // Find the first element larger than res
+      while (res < mQty && 
+             mSortedElemInfo[res].mStartOffset == minOffset)  {
+        ++res;
+      }
+    } else {
+      // found the first element with a larger offset
+      res =- res;
+    }
+    return res;
+  }
+  
   /**
    * @return a number of elements in a current document.
    */
   public int getQty() { return mQty; }
+  
   /**
    * @return a cost associated with the posting.
    */
   public long getPostCost() { return mPosting.cost(); }
+  
   /**
    * @return a number of postings connected with a given node/posting 
    *         via a query graph.
@@ -219,7 +242,7 @@ public abstract class OnePostStateBase {
       OnePostStateBase  nodeOther = mConstrNode[k];
       
       if (nodeOther.getSortIndex() == sortIndx) { 
-        ElemInfoData    eCurr = mElemInfo[mCurrElemIndx];
+        ElemInfoData    eCurr = mSortedElemInfo[mCurrElemIndx];
         ElemInfoData    eOther = nodeOther.getCurrElement();
         
         if (mConstrType[k] == ConstraintType.CONSTRAINT_PARENT){
@@ -236,6 +259,7 @@ public abstract class OnePostStateBase {
   
   /**
    * This function read one-document tokens/annotations start and end offsets.
+   * All read entries are supposed to be sorted by the start offset!
    */
   protected abstract void readDocElements()  throws IOException;
   
@@ -252,14 +276,14 @@ public abstract class OnePostStateBase {
    * @param newCapacity  a new minimum number of elements to accommodate.
    */
   protected void extendElemInfo(int newCapacity) {
-    if (newCapacity > mElemInfo.length) {
-      ElemInfoData oldElemInfo[] = mElemInfo;
-      mElemInfo = new ElemInfoData[newCapacity * 2];
+    if (newCapacity > mSortedElemInfo.length) {
+      ElemInfoData oldElemInfo[] = mSortedElemInfo;
+      mSortedElemInfo = new ElemInfoData[newCapacity * 2];
       for (int i = 0; i < oldElemInfo.length; ++i) {
-        mElemInfo[i] = oldElemInfo[i]; // re-use previously allocated memory
+        mSortedElemInfo[i] = oldElemInfo[i]; // re-use previously allocated memory
       }
-      for (int i = oldElemInfo.length; i < mElemInfo.length; ++i) {
-        mElemInfo[i] = new ElemInfoData();
+      for (int i = oldElemInfo.length; i < mSortedElemInfo.length; ++i) {
+        mSortedElemInfo[i] = new ElemInfoData();
       }
     }
   }
@@ -268,7 +292,11 @@ public abstract class OnePostStateBase {
   protected int                     mDocId=1;
   protected int                     mCurrElemIndx=-1;
   protected int                     mQty = 0;
-  protected ElemInfoData            mElemInfo[] = new ElemInfoData[0];  
+  /** Elements are supposed to be started by offset. */
+  protected ElemInfoData            mSortedElemInfo[] = new ElemInfoData[0];
+  protected ElemInfoData            mSearchKey = new ElemInfoData();
+  protected StartOffsetElemInfoDataComparator   mOffsetComp = 
+                                      new StartOffsetElemInfoDataComparator();
   
   protected StructQueryParse.ConstraintType[]     mConstrType = null;
   protected OnePostStateBase[]                    mConstrNode = null;
@@ -277,68 +305,11 @@ public abstract class OnePostStateBase {
 
 }
 
-/**
- * This a helper class to read annotation info from posting lists' payloads.
- * 
- * @author Leonid boytsov
- *
- */
-class OnePostStateAnnot extends OnePostStateBase {
+class StartOffsetElemInfoDataComparator implements Comparator<ElemInfoData> {
 
-  /**
-   * @param posting     an already initialized posting list.
-   * @param connectQty  a number of postings connected with a given node/posting 
-   *                    via a query graph.
-   */
-  public OnePostStateAnnot(DocsAndPositionsEnum posting, int connectQty) {
-    super(posting, connectQty);
-  }
-
-  /**
-   * Read next element {@link edu.cmu.lti.oaqa.annographix.solr.OnePostStateBase#readDocElements()}.
-   */
   @Override
-  protected void readDocElements() throws IOException {
-    readDocElementsBase();
-    for (int i = 0; i < mQty; ++i) {
-      mPosting.nextPosition();   
-      AnnotEncoder.decode(mPosting.getPayload(), mElemInfo[i]);
-    }
+  public int compare(ElemInfoData o1, ElemInfoData o2) {
+    return o1.mStartOffset - o2.mStartOffset;
   }
-
 }
 
-/**
- * This a helper class to read token info from posting lists.
- * 
- * @author Leonid boytsov
- *
- */
-class OnePostStateToken extends OnePostStateBase {
-
-  /**
-    * @param posting     an already initialized posting list.
-    * @param connectQty  a number of postings connected with a given node/posting 
-   *                     via a query graph.
-    */
-  public OnePostStateToken(DocsAndPositionsEnum posting, int connectQty) {
-    super(posting, connectQty);
-  }
-
-  /**
-   * Read next element {@link edu.cmu.lti.oaqa.annographix.solr.OnePostStateBase#readDocElements()}.
-   */
-  @Override
-  protected void readDocElements() throws IOException {
-    readDocElementsBase();
-    for (int i = 0; i < mQty; ++i) {
-      mPosting.nextPosition();
-      ElemInfoData dt = mElemInfo[i];
-      dt.mId = -1;
-      dt.mParentId = -1;
-      dt.mStartOffset = mPosting.startOffset();
-      dt.mEndOffset = mPosting.endOffset();
-    }
-  }
-
-}

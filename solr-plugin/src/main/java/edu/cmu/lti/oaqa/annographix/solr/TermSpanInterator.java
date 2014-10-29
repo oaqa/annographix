@@ -19,8 +19,6 @@
  */
 package edu.cmu.lti.oaqa.annographix.solr;
 
-import java.util.*;
-
 /**
  * A base class for classes that help you iterate 
  * over possible matches inside a document.
@@ -29,15 +27,6 @@ import java.util.*;
  *
  */
 public abstract class TermSpanInterator {
-  /** Postings of query element. */
-  private OnePostStateBase[]        mElemSorted;
-  /** Starting element index (inclusive) inside the span. */
-  private int[]                     mStartElemIndx;
-  /** Ending element index (exclusive) inside the span. */
-  private int[]                     mEndElemIndx;  
-  /** A number of connected postings. */
-  private int                       mPostConnectQty = 0;  
-
   /**
    * Finds the next covering span.
    * 
@@ -45,6 +34,11 @@ public abstract class TermSpanInterator {
    *            if the next span is found.
    */
   public abstract boolean nextSpan();
+  /**
+   * This function should be called once we moved to the next doc.
+   */
+  public abstract void reset();
+  
   /**
    * Checks if span constraints can be satisfied.
    * 
@@ -68,8 +62,8 @@ public abstract class TermSpanInterator {
    * not a valid combination exists within a span.
    * </p>
    * 
-   * @param     indx     the current posting index, should be 0 when we call
-   *            this recursive function the first time we enter a recursion.
+   * @param     startPostIndex     the current posting index, should be 0 when we call
+   *                               this recursive function the first time we enter a recursion.
    * 
    * @return    true if we can find a combination of elements within
    *            the span that satisfy the constraints, or false otherwise.
@@ -86,6 +80,23 @@ public abstract class TermSpanInterator {
          elemIndx < mEndElemIndx[startPostIndex];
          ++elemIndx) {
       elem.setCurrElemIndex(elemIndx);
+      /*
+       * Note that spans are sorted by start offset,
+       * so it is possible that end offsets are not changing
+       * monotonically. Hence, we don't break the first time
+       * we see the end offset beyond the boundary.
+       * We ignore the element and proceed to check the next one,
+       * because it may still be completely within the span.
+       * 
+       * An example (square brackets denote annotation boundary):
+       * 
+       *    [      ]
+       *     [   ]
+       * 
+       */
+      if (elem.getCurrElement().mEndOffset > mCurrSpanEndOffset)
+        continue;
+      
       
       // Check constraints related to earlier postings
       boolean bOk = true;
@@ -111,18 +122,43 @@ public abstract class TermSpanInterator {
   }
 
   /**
+   * Constructor.
+   * 
    * @param elemSorted  a sorted (first by connectedness, then by cost) 
    *                    array of posting states.
    */
-  private TermSpanInterator(OnePostStateBase[] elemSorted) {
+  protected TermSpanInterator(OnePostStateBase[] elemSorted) {
     mElemSorted     = elemSorted;
     mStartElemIndx  = new int[mElemSorted.length];
     mEndElemIndx    = new int[mElemSorted.length];
 
     for (int i = 0; 
-        i < mElemSorted.length && mElemSorted[i].getConnectQty() > 0;
+        i < mElemSorted.length && mElemSorted[i].getConnectQty() > 0; 
         ++i) {
-      mPostConnectQty = i + 1;      
+      mPostConnectQty = i + 1;
     }
-  }  
+  }
+
+  /** Postings of query element. */
+  protected OnePostStateBase[]         mElemSorted;
+  /** Starting element index (inclusive) inside the span. */
+  protected  int[]                     mStartElemIndx;
+  /** 
+   * Ending element (exclusive) index of elements that may be inside the span. 
+   * If we subtract one from this ending element index, we obtain an index 
+   * of the annotation whose start offset is always < span' end offset, 
+   * but the end offset may actually be larger than the span's end offset. 
+   * Because of this, we have an additional check inside
+   * the function {@link #checkSpanConstraints()}. This is done in this way
+   * because annotations/tokens are sorted only by the start offsets,
+   * while the end offset doesn't increase or decrease monotonically as we
+   * move from annotation to annotation. 
+   * 
+   */
+  protected  int[]                     mEndElemIndx;  
+  /** A number of connected postings. */
+  protected  int                       mPostConnectQty = 0;  
+  /** The current end of span offset (exclusive), updated by a child class */
+  protected int                        mCurrSpanEndOffset = -1;
 }
+

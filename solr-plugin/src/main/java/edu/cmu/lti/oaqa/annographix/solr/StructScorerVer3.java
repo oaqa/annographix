@@ -71,7 +71,7 @@ public class StructScorerVer3 extends Scorer {
 
   /**
    * @param weight          An instance of the weight class that created this scorer.
-   * @param mQueryParse     A parsed query.
+   * @param queryParse      A parsed query.
    * @param postings        All postings except the covering annotation postings.
    * @param coverAnnotPost  The covering annotation posting, or null, if there's none.
    * @param span            The maximum span size in the # number of characters.
@@ -181,7 +181,7 @@ public class StructScorerVer3 extends Scorer {
   }
 
   /**
-   * Advance to the next doc after {@see #docID()}.
+   * Advance to the next doc after {@link #docID()}.
    * <p>
    * In the ExactPhraseScorer in Solr, this function is highly optimized.
    * It is necessary, b/c the {@link #advance(int)} function is relatively costly 
@@ -270,7 +270,7 @@ public class StructScorerVer3 extends Scorer {
 
   /** 
    * Returns the estimated cost of this 
-   * scorer {@see org.apache.lucene.search.DocIdSetIterator#cost()}.
+   * scorer {@link org.apache.lucene.search.DocIdSetIterator#cost()}.
    */
   @Override
   public long cost() {

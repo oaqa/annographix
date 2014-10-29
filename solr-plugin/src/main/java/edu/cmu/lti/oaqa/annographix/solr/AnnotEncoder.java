@@ -32,9 +32,8 @@ import edu.cmu.lti.oaqa.annographix.util.UtilConst;
  * 
  * @author Leonid Boytsov
  *    
- * TODO: Try to use some light-weight compression?
- *
  **/
+//  TODO: Try to use some light-weight compression?
 public class AnnotEncoder extends AbstractEncoder 
         implements PayloadEncoder {
   @Override

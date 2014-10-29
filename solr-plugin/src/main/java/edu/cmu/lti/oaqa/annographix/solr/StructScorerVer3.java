@@ -67,7 +67,7 @@ public class StructScorerVer3 extends Scorer {
   int     postConnectQty = 0;
   
   
-  private TermSpanIteratorCoverAnnot mTermSpanIterator;
+  private TermSpanIterator           mTermSpanIterator;
   
   private OnePostStateBase           mCoverAnnotPost = null;
   private long mCost = 0;
@@ -158,11 +158,20 @@ public class StructScorerVer3 extends Scorer {
     for (int i = 0; i < tokQty; ++i)
       mPostSortedByConnectCost[i].setSortIndex(i);
     
-    // Let's create a span iterator
+    /*
+     *  Let's create a span iterator. It is defined by either
+     *  a covering span or by a maximum span lengths. A combination
+     *  of these different methods is not supported.
+     */
     if (mCoverAnnotPost != null) {
       mTermSpanIterator = 
           new TermSpanIteratorCoverAnnot(mPostSortedByConnectCost,
                                          mCoverAnnotPost); 
+    } else {
+      mTermSpanIterator = 
+          new TermSpanIteratorMaxLen(mPostSortedByConnectCost,
+                                     mSpan);
+      
     }
   }
 

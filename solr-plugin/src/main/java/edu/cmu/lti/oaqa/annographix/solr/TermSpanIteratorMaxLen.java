@@ -30,14 +30,14 @@ import java.util.PriorityQueue;
  *
  */
 
-public class TermSpanIteratorLength extends TermSpanIterator {
+public class TermSpanIteratorMaxLen extends TermSpanIterator {
   /**
    * Constructor.
    * 
    * @param     postSorted  see {@link TermSpanIterator#TermSpanIterator(OnePostStateBase[])}
    * @param     maxSpanLen  a maximum length of the span covering all query elements.
    */
-  TermSpanIteratorLength(OnePostStateBase[] postSorted,
+  TermSpanIteratorMaxLen(OnePostStateBase[] postSorted,
                          int maxSpanLen) {
     super(postSorted);
     
@@ -49,7 +49,7 @@ public class TermSpanIteratorLength extends TermSpanIterator {
   }
   
   /**
-   * See {@link TermSpanIterator#initSpanIteration()}.
+   * See {@link TermSpanIterator#initSpanIteration()}. 
    */
   @Override
   public void initSpanIteration() {

@@ -39,7 +39,8 @@ package edu.cmu.lti.oaqa.annographix.solr;
 public abstract class TermSpanIterator {  
   /**
    * This function initiates span iterators. It should be called after 
-   * fetching the information for the next document.
+   * fetching the information for the next document. It assumes that each 
+   * query element is found in the document at least once.
    */
   public abstract void initSpanIteration();
   

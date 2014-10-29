@@ -31,6 +31,8 @@ import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 
 /** 
  * This a base helper class to read annotation and token info from posting lists. 
+ * This class should not be shared among threads, because it has thread-unsafe
+ * function {@link #findElemIndexWithLargerOffset(int, int, int)}.
  * 
  * @author Leonid Boytsov
  *
@@ -76,6 +78,11 @@ public abstract class OnePostStateBase {
   public ElemInfoData getElement(int i) { return mSortedElemInfo[i]; }
   
   /**
+   * @return all elements
+   */
+  public ElemInfoData[] getAllElements() { return mSortedElemInfo; }
+  
+  /**
    * @return a current element
    */
   public ElemInfoData getCurrElement() { return mSortedElemInfo[mCurrElemIndx]; }
@@ -96,7 +103,11 @@ public abstract class OnePostStateBase {
   public int getCurrElemIndex() { return mCurrElemIndx; }
   
   /**
-   * Find an element with an offset larger than the specified one.
+   * Find an element with an offset larger than the specified one. 
+   * First, it iterates linSearchIter over the array (i.e.,
+   * carries out a partial sequential search). 
+   * If the necessary element is still not found, it resorts to binary searching.
+   * 
    * <p>
    * This function assumes that elements are sorted by in the order of 
    * non-decreasing offsets. It is not thread-safe, because it is
@@ -104,8 +115,12 @@ public abstract class OnePostStateBase {
    * time we call this function). 
    * </p> 
    *
-   * @param     minOffset   find elements with offset > minOffset.
-   * @param     minIndx     search among elements with the index >= minIndx
+   * @param     offsetToExceed  find elements with offset greater than this value.
+   * @param     minIndx         search among elements with the index at least as
+   *                            larger as this index.
+   * @param     linSearchIter   carry out this number of iterations,
+   *                            before resorting to binary search.
+   *                            
    *  
    * @return    the index (>= minIndx) of the first element 
    *            whose offset > minOffset or {@link #getQty()} if such
@@ -113,15 +128,35 @@ public abstract class OnePostStateBase {
    *             
    *  
    */
-  public int findElemIndexWithLargerOffset(int minOffset, int minIndx) {
-    mSearchKey.mStartOffset = minOffset;
+  public int findElemIndexWithLargerOffset(int offsetToExceed, 
+                                           int minIndx,
+                                           int linSearchIter) {
+    
+    // Let's do some exponential searching
+    int len = mSortedElemInfo.length;
+    minIndx = Math.max(0, minIndx);
+
+   /*
+    * TODO : try to replace this procedure with the exponential search, 
+    *        it may be considerably faster in some cases. 
+    */
+    
+    for (int i = 0; 
+        i < linSearchIter && minIndx < len; 
+        ++i, ++minIndx) {
+      if (mSortedElemInfo[minIndx].mStartOffset > offsetToExceed) return minIndx;
+    }
+
+    if (minIndx >= len) return len;       
+    
+    mSearchKey.mStartOffset = offsetToExceed;
     int res = Arrays.binarySearch(mSortedElemInfo, 
-                              Math.max(0, minIndx), mQty,
+                              minIndx, mQty,
                               mSearchKey, mOffsetComp);
     if (res >= 0) {
       // Find the first element larger than res
       while (res < mQty && 
-             mSortedElemInfo[res].mStartOffset == minOffset)  {
+             mSortedElemInfo[res].mStartOffset == offsetToExceed)  {
         ++res;
       }
     } else {

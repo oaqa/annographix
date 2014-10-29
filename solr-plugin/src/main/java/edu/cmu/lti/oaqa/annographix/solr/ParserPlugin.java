@@ -80,13 +80,14 @@ class StructRetrQParser extends QParser {
     if (localParams.getInt(PARAM_VERSION) != null)
       mVersion  = localParams.getInt(PARAM_VERSION);
     
-    if (localParams.getInt(PARAM_SPAN) != null) 
-      mSpan = localParams.getInt(PARAM_SPAN);
-
     mAnnotFieldName = localParams.get(PARAM_ANNOT_FIELD,
         UtilConst.DEFAULT_ANNOT_FIELD);
     
     mCoverAnnotLabel = localParams.get(PARAM_COVER_ANNOT);
+    
+    if (localParams.getInt(PARAM_SPAN) != null) {
+      mSpan = localParams.getInt(PARAM_SPAN);
+    }    
     
     mTextFieldName = localParams.get(PARAM_TEXT_FIELD, 
                                      UtilConst.DEFAULT_TEXT4ANNOT_FIELD);
@@ -94,6 +95,11 @@ class StructRetrQParser extends QParser {
 
   @Override
   public Query parse() throws SyntaxError {
+    if (mCoverAnnotLabel != null && mSpan != Integer.MAX_VALUE) {
+      throw new SyntaxError("Cannot specify both '" + PARAM_SPAN + 
+                            "' and '" + PARAM_COVER_ANNOT + "'");
+    }
+
     
     /**
      *  <p>Note lowercasing here. Also beware of lowercasing 

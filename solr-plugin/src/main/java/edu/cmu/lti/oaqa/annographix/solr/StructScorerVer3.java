@@ -66,8 +66,12 @@ public class StructScorerVer3 extends Scorer {
    */
   int     postConnectQty = 0;
   
-  private OnePostStateBase   mCoverAnnotPost = null;
+  
+  private TermSpanIteratorCoverAnnot mTermSpanIterator;
+  
+  private OnePostStateBase           mCoverAnnotPost = null;
   private long mCost = 0;
+
 
   /**
    * @param weight          An instance of the weight class that created this scorer.
@@ -153,6 +157,13 @@ public class StructScorerVer3 extends Scorer {
     
     for (int i = 0; i < tokQty; ++i)
       mPostSortedByConnectCost[i].setSortIndex(i);
+    
+    // Let's create a span iterator
+    if (mCoverAnnotPost != null) {
+      mTermSpanIterator = 
+          new TermSpanIteratorCoverAnnot(mPostSortedByConnectCost,
+                                         mCoverAnnotPost); 
+    }
   }
 
   /**
@@ -264,8 +275,12 @@ public class StructScorerVer3 extends Scorer {
    * @return    number of matches inside a document.
    */
   private int computeFreq() {
-    // TODO Auto-generated method stub
-    return 0;
+    mTermSpanIterator.initSpanIteration();
+    int qty = 0;
+    while (mTermSpanIterator.nextSpan()) {
+      if (mTermSpanIterator.checkSpanConstraints(0)) ++qty;
+    }
+    return qty;
   }
 
   /** 

@@ -20,24 +20,105 @@
 package edu.cmu.lti.oaqa.annographix.solr;
 
 /**
- * A base class for classes that help you iterate 
- * over possible matches inside a document.
+ * <p>A span iterator base class. This class helps you iterate 
+ * over possible matches inside a document. This is achieved
+ * by moving a window inside the document and checking whether:
+ * </p>
+ * 
+ * <ol> 
+ * <li>All query elements are present in this window.
+ * <li>Constraints defined by the query graph are satisfied.
+ * </ol>
+ * 
+ * <p>A window selection algorithm is provided by child classes.</p>
+ *  
  * 
  * @author Leonid Boytsov
  *
  */
-public abstract class TermSpanInterator {
+public abstract class TermSpanIterator {  
+  /**
+   * This function initiates span iterators. It should be called after 
+   * fetching the information for the next document.
+   */
+  public abstract void initSpanIteration();
+  
   /**
    * Finds the next covering span.
+   * One needs to call {@link #initSpanIteration()} (every time
+   * after we fetched the next document) before calling this function. 
    * 
    * @return    false if we reach the end of the document or true,
    *            if the next span is found.
-   */
-  public abstract boolean nextSpan();
-  /**
-   * This function should be called once we moved to the next doc.
-   */
-  public abstract void reset();
+   */  
+  public boolean nextSpan() {
+    while (nextSpanInternal()) {
+      /*
+       *  Let's check if we can find all elements inside the span.
+       *  We will only check for their presence, without checking
+       *  if constraints are satisfied.
+       */
+      boolean bOk = true;
+      
+      for (int k = 0; k < mPostSorted.length; ++k) {
+        OnePostStateBase post = mPostSorted[k];
+        int   elemQty = post.getQty();
+        
+        int nextStart = post.findElemIndexWithLargerOffset(
+                                                    mCurrSpanEndOffset - 1, 
+                                                    mStartElemIndx[k],
+                                                    MIN_LINEAR_SEARCH_QTY);
+        if (nextStart >= elemQty) {
+          /*
+           *  Because we cannot find at least one element with the start
+           *  offset >= mCurrSpanEndOffset, no match is possible
+           *  (a match should include all elements). Thus, we can save some
+           *  effort by forcibly terminating the in-document iteration earlier.  
+           */
+          finishSpanIteration();
+          return false;
+        }
+        
+        ElemInfoData nextElem = post.getElement(nextStart);
+        if (nextElem.mStartOffset >= mCurrSpanEndOffset) {
+          /*
+           *  uups the next found element is actually to the right of the current
+           *  covering annotation (square brackets denote annotations):
+           *  
+           *  [ current covering annotation ] [next element]
+           *  
+           */
+          mStartElemIndx[k] = nextStart;
+          bOk = false;
+          break;
+        }
+        /*
+         *  p will get us the index of the FIRST element with start offset beyond covering,
+         *  or the value elemQty...
+         */
+        int nextEnd = 
+            post.findElemIndexWithLargerOffset(mCurrSpanEndOffset - 1,
+                                               mStartElemIndx[k] + 1,
+                                               MIN_LINEAR_SEARCH_QTY);
+        /*
+         *  If we subtract one from nextEnd, 
+         *  we obtain the index of the LAST element 
+         *  whose start offset is within the covering annotation.
+         *  This is what we need, because mEndElemIndx[k] is
+         *  treated exclusively.
+         */
+        
+        mEndElemIndx[k] = nextEnd;
+      }
+      
+      if (bOk) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
   
   /**
    * Checks if span constraints can be satisfied.
@@ -74,7 +155,7 @@ public abstract class TermSpanInterator {
       return true;
     }
     
-    OnePostStateBase    elem = mElemSorted[startPostIndex];
+    OnePostStateBase    elem = mPostSorted[startPostIndex];
 
     for (int elemIndx = mStartElemIndx[startPostIndex];
          elemIndx < mEndElemIndx[startPostIndex];
@@ -101,7 +182,7 @@ public abstract class TermSpanInterator {
       // Check constraints related to earlier postings
       boolean bOk = true;
       for (int k = 0; k < startPostIndex; ++k)
-      if (!mElemSorted[k].checkConstraints(startPostIndex)) {
+      if (!mPostSorted[k].checkConstraints(startPostIndex)) {
         bOk = false; 
         break;
       }
@@ -127,20 +208,45 @@ public abstract class TermSpanInterator {
    * @param elemSorted  a sorted (first by connectedness, then by cost) 
    *                    array of posting states.
    */
-  protected TermSpanInterator(OnePostStateBase[] elemSorted) {
-    mElemSorted     = elemSorted;
-    mStartElemIndx  = new int[mElemSorted.length];
-    mEndElemIndx    = new int[mElemSorted.length];
+  protected TermSpanIterator(OnePostStateBase[] elemSorted) {
+    mPostSorted     = elemSorted;
+    mStartElemIndx  = new int[mPostSorted.length];
+    mEndElemIndx    = new int[mPostSorted.length];
 
     for (int i = 0; 
-        i < mElemSorted.length && mElemSorted[i].getConnectQty() > 0; 
+        i < mPostSorted.length && mPostSorted[i].getConnectQty() > 0; 
         ++i) {
       mPostConnectQty = i + 1;
     }
   }
+  
+  /**
+   * This function should be called from every child {@link #initSpanIteration()} function.
+   */
+  protected void initSpanIterationBase() {
+    mCurrSpanEndOffset   = -1;
+    mCurrSpanStartOffset = -1;
+    for (int i = 0; i < mPostSorted.length; ++i)
+      mStartElemIndx[i] = 0;
+
+  }
+  /**
+   * This function moves to the next span. It updates mCurrSpanStartOffset
+   * and mCurrSpanEndOffset.
+   * 
+   * @return    true if successful, and false, if no further spans are found.
+   */
+  protected abstract boolean nextSpanInternal();
+  
+  /**
+   * This function should be implemented in the child class, it is
+   * used in the function {@link #nextSpan()} to signal the early
+   * termination of the iteration procedure over the spans.
+   */
+  protected abstract void finishSpanIteration();
 
   /** Postings of query element. */
-  protected OnePostStateBase[]         mElemSorted;
+  protected OnePostStateBase[]         mPostSorted;
   /** Starting element index (inclusive) inside the span. */
   protected  int[]                     mStartElemIndx;
   /** 
@@ -152,13 +258,30 @@ public abstract class TermSpanInterator {
    * the function {@link #checkSpanConstraints()}. This is done in this way
    * because annotations/tokens are sorted only by the start offsets,
    * while the end offset doesn't increase or decrease monotonically as we
-   * move from annotation to annotation. 
+   * move from annotation to annotation. However, when the start offset
+   * becomes to the right of the covering annotation, no further elements can
+   * be found inside the covering annotation.
    * 
    */
   protected  int[]                     mEndElemIndx;  
   /** A number of connected postings. */
   protected  int                       mPostConnectQty = 0;  
-  /** The current end of span offset (exclusive), updated by a child class */
+  /** 
+    * The end offset of the current span (exclusive), 
+    * updated by a child's class {@link nextSpanInternal()} 
+    */
   protected int                        mCurrSpanEndOffset = -1;
+  /** 
+   * The start offset of the current span, 
+   * updated by a child's class {@link nextSpanInternal()} 
+   */
+  protected int                        mCurrSpanStartOffset = -1;
+  /**
+   * A number of linear (sequential) search iterations to carry out
+   * before resorting to binary search. This is used to find the next
+   * element within a given span.
+   */
+  protected static final int MIN_LINEAR_SEARCH_QTY = 0;
+  
 }
 

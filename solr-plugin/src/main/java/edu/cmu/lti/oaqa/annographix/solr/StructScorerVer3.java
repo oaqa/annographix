@@ -115,12 +115,16 @@ public class StructScorerVer3 extends Scorer {
 
     for(int i = 0; i < tokQty; ++i) { 
       allPostListUnsorted.add(
-          OnePostStateBase.createPost(postings[i], queryParse.getTypes().get(i))
+          OnePostStateBase.createPost(postings[i], 
+                                      queryParse.getTypes().get(i),
+                                      queryParse.getConnectQty(i))
       );
     }
     if (coverAnnotPost != null) {
       mCoverAnnotPost = 
-        OnePostStateBase.createPost(coverAnnotPost, FieldType.FIELD_ANNOTATION);
+        OnePostStateBase.createPost(coverAnnotPost, 
+                                    FieldType.FIELD_ANNOTATION,
+                                    0);
       allPostListUnsorted.add(mCoverAnnotPost);
     }
     mAllPostsSortedByCost = new OnePostStateBase[allPostListUnsorted.size()];
@@ -141,13 +145,14 @@ public class StructScorerVer3 extends Scorer {
       for (int depId : queryParse.getDependIds(i))
         constrNode.add(allPostListUnsorted.get(depId));
       
-      mPostSortedByConnectCost[i].setConstraints(
-          queryParse.getConnectQty(i), 
-          queryParse.getConstrTypes(i), 
-          constrNode);
+      mPostSortedByConnectCost[i].setConstraints(queryParse.getConstrTypes(i), 
+                                                 constrNode);
     }
-
+    // Sort them and assign sort indexes
     Arrays.sort(mPostSortedByConnectCost, new SortPostByConnectQtyAndCost());
+    
+    for (int i = 0; i < tokQty; ++i)
+      mPostSortedByConnectCost[i].setSortIndex(i);
   }
 
   /**
@@ -307,6 +312,7 @@ public class StructScorerVer3 extends Scorer {
       long d = o1.getPostCost() - o2.getPostCost();
       return d == 0 ? 0 : (d < 0 ? -1 : 1);    
     }  
+    
   }
   
 }

@@ -44,6 +44,7 @@ import org.apache.lucene.index.DocsAndPositionsEnum;
  */
 import org.apache.lucene.search.DocIdSetIterator;
 
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.ConstraintType;
 import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 import edu.stanford.nlp.util.ArrayUtils;
 
@@ -58,13 +59,28 @@ public abstract class OnePostStateBase {
   // TODO change to a larger value
   protected static int INIT_SIZE = 1;
   
-  public static OnePostStateBase createPost(DocsAndPositionsEnum posting, FieldType type) {
+  /**
+   * 
+   * Creates a wrapper of the right type.
+   * 
+   * @param posting     a posting to wrap.
+   * @param type        a posting type: annotation or regular token.
+   * @param connectQty  a number of postings connected with a given node/posting 
+   *                    via a query graph.
+   * 
+   * @return            a reference to the newly created object
+   */
+  public static OnePostStateBase createPost(DocsAndPositionsEnum posting, 
+                                            FieldType type,
+                                            int connectQty) {
     return type == FieldType.FIELD_ANNOTATION ? 
-                      new OnePostStateAnnot(posting):new OnePostStateToken(posting);
+                      new OnePostStateAnnot(posting, connectQty):
+                      new OnePostStateToken(posting, connectQty);
   }
   
-  public OnePostStateBase(DocsAndPositionsEnum posting) {
+  public OnePostStateBase(DocsAndPositionsEnum posting, int connectQty) {
     mPosting = posting;
+    mConnectQty = connectQty;
     extendElemInfo(INIT_SIZE);
   }
   
@@ -77,6 +93,24 @@ public abstract class OnePostStateBase {
    */
   public ElemInfoData getElement(int i) { return mElemInfo[i]; }
   /**
+   * @return a current element
+   */
+  public ElemInfoData getCurrElement() { return mElemInfo[mCurrElemIndx]; }
+  /**
+   * Changes the internal index pointing to the current element, 
+   * without checking if the index is invalid.
+   * 
+   * @param index   an index to set.
+   */
+  public void setCurrElemIndex(int index) {
+    mCurrElemIndx = index;
+  }
+
+  /**
+   * @return an internal element index
+   */
+  public int getCurrElemIndex() { return mCurrElemIndx; }
+  /**
    * @return a number of elements in a current document.
    */
   public int getQty() { return mQty; }
@@ -85,7 +119,8 @@ public abstract class OnePostStateBase {
    */
   public long getPostCost() { return mPosting.cost(); }
   /**
-   * @return a number of connected postings.
+   * @return a number of postings connected with a given node/posting 
+   *         via a query graph.
    */
   public int getConnectQty() { return mConnectQty; }
   
@@ -100,8 +135,9 @@ public abstract class OnePostStateBase {
     mQty = 0;
     if (mDocId != NO_MORE_DOCS)
       mDocId = mPosting.advance(docId);
-    if (mDocId != NO_MORE_DOCS)
+    if (mDocId != NO_MORE_DOCS) {
       readDocElements();
+    }
     return mDocId;
   }
   
@@ -115,8 +151,9 @@ public abstract class OnePostStateBase {
     mQty = 0;
     if (mDocId != NO_MORE_DOCS)
       mDocId = mPosting.nextDoc();
-    if (mDocId != NO_MORE_DOCS)
+    if (mDocId != NO_MORE_DOCS) {
       readDocElements();
+    }
     return mDocId;
   }  
   
@@ -131,16 +168,13 @@ public abstract class OnePostStateBase {
    * called.
    * </p>
    * 
-   * @param connectQty      an overall number of connected 
-   *                        postings (not necessarily directly adjacent nodes).
-   * @param constrType      a list of constraint types.
-   * @param constrNode      a list of constraint/dependent nodes.
+   * @param     constrType      a list of constraint types.
+   * @param     constrNode      a list of constraint/dependent nodes.
+   * 
    * @throws Exception
    */
-  public void setConstraints(int connectQty,
-                             ArrayList<StructQueryParse.ConstraintType> constrType,
+  public void setConstraints(ArrayList<StructQueryParse.ConstraintType> constrType,
                              ArrayList<OnePostStateBase> constrNode) {
-    mConnectQty = connectQty;
     if (constrNode.size() != constrType.size()) {
       throw new RuntimeException("Bug: constrType.size() != constrNode.size()");
     }
@@ -152,11 +186,65 @@ public abstract class OnePostStateBase {
       mConstrNode[i] = constrNode.get(i);
     }    
   }
+  /**
+   * Memorize an index in the sorted array of postings
+   * 
+   * @param     sortIndx        an index in the array of postings sorted
+   *                            using SortPostByConnectQtyAndCost.
+   */
+  public void setSortIndex(int sortIndx) {
+    mSortIndx = sortIndx;
+  }
+  
+  /**
+   * @return    an index in the array of postings sorted
+   *            using SortPostByConnectQtyAndCost.
+   */
+  public int getSortIndex() { return mSortIndx; }
+  
+  /**
+   * Check if constraints involving the current node and the node
+   * with the index sortIndx are satisfied. 
+   * <p>The complexity of this operation is O(Nconstr). In real
+   * scenarios, we expect Nconstr to be small (around 2-5). 
+   * In this case, iterating over an array is faster than 
+   * retrieving data from a hash.  
+   * 
+   * @param     sortIndx
+   * 
+   * @return    true if constraints are satisfied and false otherwise.
+   */
+  public boolean checkConstraints(int sortIndx) {
+    for (int k = 0; k < mConstrType.length; ++k) {
+      OnePostStateBase  nodeOther = mConstrNode[k];
+      
+      if (nodeOther.getSortIndex() == sortIndx) { 
+        ElemInfoData    eCurr = mElemInfo[mCurrElemIndx];
+        ElemInfoData    eOther = nodeOther.getCurrElement();
+        
+        if (mConstrType[k] == ConstraintType.CONSTRAINT_PARENT){
+          if (eCurr.mId != eOther.mParentId) return false;
+        } else {
+          // mConstrType[k] == ConstraintType.CONSTRAINT_CONTAINS
+          if (eOther.mStartOffset < eCurr.mStartOffset ||
+              eOther.mEndOffset > eCurr.mEndOffset) return false;
+        }
+      }
+    }
+    return true;
+  }
   
   /**
    * This function read one-document tokens/annotations start and end offsets.
    */
   protected abstract void readDocElements()  throws IOException;
+  
+  protected void readDocElementsBase() throws IOException {
+    mCurrElemIndx=0;
+    mQty = mPosting.freq();
+    // Ensure we have enough space to store 
+    extendElemInfo(mQty);    
+  }
   
   /**
    * Re-allocate the mElemInfo array if necessary.
@@ -177,13 +265,16 @@ public abstract class OnePostStateBase {
   }
   
   protected DocsAndPositionsEnum    mPosting;
-  protected int                     mDocId;
+  protected int                     mDocId=1;
+  protected int                     mCurrElemIndx=-1;
   protected int                     mQty = 0;
   protected ElemInfoData            mElemInfo[] = new ElemInfoData[0];  
   
   protected StructQueryParse.ConstraintType[]     mConstrType = null;
   protected OnePostStateBase[]                    mConstrNode = null;
   protected int                                   mConnectQty = 0;
+  protected int                                   mSortIndx = -1;
+
 }
 
 /**
@@ -196,9 +287,11 @@ class OnePostStateAnnot extends OnePostStateBase {
 
   /**
    * @param posting     an already initialized posting list.
+   * @param connectQty  a number of postings connected with a given node/posting 
+   *                    via a query graph.
    */
-  public OnePostStateAnnot(DocsAndPositionsEnum posting) {
-    super(posting);
+  public OnePostStateAnnot(DocsAndPositionsEnum posting, int connectQty) {
+    super(posting, connectQty);
   }
 
   /**
@@ -206,9 +299,7 @@ class OnePostStateAnnot extends OnePostStateBase {
    */
   @Override
   protected void readDocElements() throws IOException {
-    mQty = mPosting.freq();
-    // Ensure we have enough space to store 
-    extendElemInfo(mQty);
+    readDocElementsBase();
     for (int i = 0; i < mQty; ++i) {
       mPosting.nextPosition();   
       AnnotEncoder.decode(mPosting.getPayload(), mElemInfo[i]);
@@ -226,10 +317,12 @@ class OnePostStateAnnot extends OnePostStateBase {
 class OnePostStateToken extends OnePostStateBase {
 
   /**
-    * @param posting    an already initialized posting list.
+    * @param posting     an already initialized posting list.
+    * @param connectQty  a number of postings connected with a given node/posting 
+   *                     via a query graph.
     */
-  public OnePostStateToken(DocsAndPositionsEnum posting) {
-    super(posting);
+  public OnePostStateToken(DocsAndPositionsEnum posting, int connectQty) {
+    super(posting, connectQty);
   }
 
   /**
@@ -237,9 +330,7 @@ class OnePostStateToken extends OnePostStateBase {
    */
   @Override
   protected void readDocElements() throws IOException {
-    mQty = mPosting.freq();
-    // Ensure we have enough space to store 
-    extendElemInfo(mQty);
+    readDocElementsBase();
     for (int i = 0; i < mQty; ++i) {
       mPosting.nextPosition();
       ElemInfoData dt = mElemInfo[i];

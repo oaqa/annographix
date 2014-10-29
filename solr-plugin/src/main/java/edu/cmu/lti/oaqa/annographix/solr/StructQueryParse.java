@@ -56,7 +56,8 @@ public class StructQueryParse {
   
   /**
    * @param     index   a token/annotation index.
-   * @return    a number of connected postings.
+   * @return    a number of postings connected with a given node/posting 
+   *            via a query graph.
    */
   public int getConnectQty(int index) {
     return mConnectQty.get(index);
@@ -133,7 +134,10 @@ public class StructQueryParse {
     for (String tok: allConstr)
       addConstraint(tok);
     
-    // Finally, let's compute a number of edges each node is connected with
+    /*
+     *  Finally, let's compute a number of edges with which 
+     *  each node is connected via the query graph.
+     */
     compConnectQty();
      
   }
@@ -151,7 +155,8 @@ public class StructQueryParse {
    * @param dependId_           dependent ids for constrained/child elements,
    *                            each array element is a string with comma separated
    *                            dependency ids. 
-   * @param connectQty_         connectedness numbers.
+   * @param connectQty_         connectedness number array (a numbers of postings 
+   *                            connected with a given node/posting via a query graph).
    * 
    * @return true if provided parameters match an internal representation of
    *         a parsed query.
@@ -387,7 +392,7 @@ public class StructQueryParse {
   }
   
   /**
-   * Compute a number of edges each node is connected with.
+   * Compute a number of edges each node is connected with in an query graph.
    */
   private void compConnectQty() {
     for (int i = 0; i < mTokens.size(); ++i) {

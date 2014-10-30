@@ -26,6 +26,7 @@
     <typeSystemDescription>
       <imports>
         <import name="types.MainTypes"/>
+        <import name="types.frameworkTypesDescriptor"/>
       </imports>
     </typeSystemDescription>
     <typePriorities/>

@@ -13,7 +13,7 @@
         <description>The name of view (SOFA) containing annotations.</description>
         <type>String</type>
         <multiValued>false</multiValued>
-        <mandatory>true</mandatory>
+        <mandatory>false</mandatory>
       </configurationParameter>
       <configurationParameter>
         <name>text_field</name>
@@ -30,7 +30,7 @@
         <mandatory>true</mandatory>
       </configurationParameter>
       <configurationParameter>
-        <name>doc_info_type</name>
+        <name>docinfo_type</name>
         <description>A name of the UIMA type that keeps document related information.</description>
         <type>String</type>
         <multiValued>false</multiValued>
@@ -59,7 +59,7 @@
       </configurationParameter>
       <configurationParameter>
         <name>mapping_file</name>
-        <description>An annotation mapping file, which defines which annotations and which annotation attributes should be stored. The annotation mapping file also specifies which parent-child links should be memorized. </description>
+        <description>An annotation mapping file, which defines which annotations and which annotation attributes should be stored. The annotation mapping file also specifies which parent-child links should be memorized.</description>
         <type>String</type>
         <multiValued>false</multiValued>
         <mandatory>true</mandatory>
@@ -85,10 +85,10 @@
         </value>
       </nameValuePair>
       <nameValuePair>
-        <name>doc_info_type</name>
+        <name>docinfo_type</name>
         <value>
           <string>edu.cmu.lti.oaqa.annographix.types.DocumentInfo</string>
-        </value>
+         </value>
       </nameValuePair>
       <nameValuePair>
         <name>docno_attr</name>
@@ -106,6 +106,12 @@
         <name>out_annot_file</name>
         <value>
           <string>output/annot_offsets</string>
+        </value>
+      </nameValuePair>
+    <nameValuePair>
+        <name>mapping_file</name>
+        <value>
+          <string>src/main/resources/annotation_map.xml</string>
         </value>
       </nameValuePair>
     </configurationParameterSettings>

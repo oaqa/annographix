@@ -33,6 +33,7 @@ import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.cas.*;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.apache.uima.util.Level;
+import org.apache.uima.fit.util.JCasUtil;
 
 import edu.cmu.lti.oaqa.annographix.util.CompressUtils;
 import edu.cmu.lti.oaqa.annographix.util.UtilConst;
@@ -109,7 +110,7 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
   private Class<? extends Annotation>  mDocInfoTypeClass;
   /** a method to obtain the document number */
   private Method                       mGetDoNoMethod;
-  private int                          mDocInfoTypeId = -1;
+ 
 
   /** Result of parsing the annotation mapping file. */
   private Map<String, MappingReader.TypeDescr> mMappingConfig;
@@ -148,13 +149,12 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
   public void initialize(UimaContext context) throws ResourceInitializationException {
     super.initialize(context);
     
+    /* 
+     * A view name can be optional.
+     */
     mViewName = 
           (String) context.getConfigParameterValue(UtilConst.CONFIG_VIEW_NAME);
-    
-    if (mViewName == null)
-      throw new ResourceInitializationException(
-             new Exception("Missing parameter: " + UtilConst.CONFIG_VIEW_NAME));    
-    
+        
     mTextFieldName = (String) 
               context.getConfigParameterValue(UtilConst.CONFIG_TEXT4ANNOT_FIELD);
     
@@ -200,31 +200,6 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
                                   "Cannot obtain attribute-reading function, " +
                                   "type: '%s', attribute '%s', exception '%s'",
                                   mDocInfoType, mDocNoAttr, eMemorize.toString()))); 
-    }
-    
-    for (Field f: mDocInfoTypeClass.getFields()) 
-    if (f.getName().equals("type")){
-      eMemorize = null;      
-      try {
-        mDocInfoTypeId = f.getInt(null);
-      } catch (IllegalArgumentException e1) {
-        eMemorize = e1;
-      } catch (IllegalAccessException e1) {
-        eMemorize = e1;
-      }
-      if (eMemorize != null) {
-        throw new ResourceInitializationException(
-            new Exception(String.format(          
-                                    "Cannot obtain type ID, " +
-                                    "type: '%s', exception '%s'",
-                                    mDocInfoType, eMemorize.toString())));        
-      }      
-    }
-    
-    if (mDocInfoTypeId < 0) {
-      throw new ResourceInitializationException(
-                  new Exception("Bug: cannot obtain a type id for the type: '"+
-                                 mDocInfoType + "'"));
     }
     
     FilePair pTxt = InitOutFile(context, "out_text_file");
@@ -309,43 +284,46 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
     }
         
     String docId = null;
-    
-    FSIterator<Annotation> it = jcas.getAnnotationIndex(mDocInfoTypeId).iterator();
-    
-    if (it.hasNext()) {
-      Exception eMemorize = null;
-      Annotation docInfo = it.next();
-      try {
-        docId = (String) mGetDoNoMethod.invoke(docInfo);
-      } catch (IllegalAccessException e1) {
-        eMemorize = e1;
-      } catch (IllegalArgumentException e1) {
-        eMemorize = e1;
-      } catch (InvocationTargetException e1) {
-        eMemorize = e1;
-      }
-      if (eMemorize != null) {
-        throw new AnalysisEngineProcessException(
-                    new Exception(
-                          String.format("Cannot obtain document identifier from " +
-                                        " the annotation, type '%s' " +
-                                        " document number/id attribute '%s'",
-                                        mDocInfoType, mDocNoAttr)));    
-      }
-    } else {
-      throw new AnalysisEngineProcessException(new 
-          Exception("Missing annotation of the type: '" + mDocInfoType + "'"));
-    }
-    
-    if (it.hasNext()) {
-      throw new AnalysisEngineProcessException(new 
-          Exception("More than one annotation of the type: '" + mDocInfoType + "'"));
-    }
+
 
     XmlHelper xmlHlp = new XmlHelper();
 
-    try {
-      JCas viewJCAs = jcas.getView(mViewName);
+    try {      
+      JCas viewJCas = mViewName != null ? jcas.getView(mViewName) : jcas;
+      
+      FSIterator<Annotation> it = (FSIterator<Annotation>) 
+                                JCasUtil.iterator(viewJCas, mDocInfoTypeClass);
+      
+      if (it.hasNext()) {
+        Exception eMemorize = null;
+        Annotation docInfo = it.next();
+        try {
+          docId = (String) mGetDoNoMethod.invoke(docInfo);
+        } catch (IllegalAccessException e1) {
+          eMemorize = e1;
+        } catch (IllegalArgumentException e1) {
+          eMemorize = e1;
+        } catch (InvocationTargetException e1) {
+          eMemorize = e1;
+        }
+        if (eMemorize != null) {
+          throw new AnalysisEngineProcessException(
+                      new Exception(
+                            String.format("Cannot obtain document identifier from " +
+                                          " the annotation, type '%s' " +
+                                          " document number/id attribute '%s'",
+                                          mDocInfoType, mDocNoAttr)));    
+        }
+      } else {
+        throw new AnalysisEngineProcessException(new 
+            Exception("Missing annotation of the type: '" + mDocInfoType + "'"));
+      }
+      
+      if (it.hasNext()) {
+        throw new AnalysisEngineProcessException(new 
+            Exception("More than one annotation of the type: '" + mDocInfoType + "'"));
+      }      
+
       /*
        *  Let's make a sanity check here, even though it's a bit expensive:
        *  The text in the view should match the text in the annotation field.
@@ -358,7 +336,7 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
         throw new Exception("Missing field: " + mTextFieldName + 
                             " docId: " + docId);
       }
-      if (!annotText.equals(viewJCAs.getDocumentText())) {
+      if (!annotText.equals(viewJCas.getDocumentText())) {
         throw new Exception("Non-matching annotation texts for docId: " + docId);        
       }
       
@@ -369,7 +347,7 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
       }
       
       writeText(docText);
-      writeAnnotations(docNo, viewJCAs);
+      writeAnnotations(docNo, viewJCas);
     } catch (Exception e) {
       throw new AnalysisEngineProcessException(e);
     }

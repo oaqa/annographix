@@ -14,28 +14,18 @@
  *  limitations under the License.
  *
  */
-
 package edu.cmu.lti.oaqa.annographix.uima;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.io.File;
-import java.io.FileWriter;
+import java.io.*;
+import java.util.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import org.apache.uima.UimaContext;
-
 import org.apache.uima.analysis_component.CasAnnotator_ImplBase;
 import org.apache.uima.analysis_engine.AnalysisEngineProcessException;
 import org.apache.uima.jcas.JCas;
@@ -43,7 +33,6 @@ import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.cas.*;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.apache.uima.util.Level;
-import org.apache.uima.util.ProcessTrace;
 
 import edu.cmu.lti.oaqa.annographix.util.CompressUtils;
 import edu.cmu.lti.oaqa.annographix.util.UtilConst;
@@ -74,104 +63,187 @@ class OneAnnotationData {
     public String    mTextValue;
 }
 /**
- * Extracts annotations from CAS objects and creates input files
- * for the {@link edu.cmu.lti.oaqa.annographix.apps.SolrIndexApp}.
+ * <p>
+ * This class is essentially a CAS consumer that extracts annotations 
+ * as well ass their parent-child links and stores them for subsequent
+ * indexing. Which annotations and which parent-child links are 
+ * stored is defined by an additional configuration file that
+ * is called an <b>annotation mapping file</b>.
+ * </p>
+ * 
+ * <p>
+ * This CAS consumer creates an indexer file in TRECTEXT Indri format,
+ * and an an offset annotation file (again in Indri format).
+ * These files can be indexed by {@link edu.cmu.lti.oaqa.annographix.apps.SolrIndexApp}.
+ * </p>
  * 
  * @author Leonid Boytsov
  */
 public class AnnotationWriter extends CasAnnotator_ImplBase {
-  /** Result of parsing a config file. */
+  /** 
+   * A parameter to specify an annotation mapping file. 
+   * This file defines which annotations and which annotation
+   * attributes should be stored. The annotation mapping file
+   * also specifies which parent-child links should be memorized. 
+   */
+  public static final String PARAM_MAPPING_FILE = "mapping_file";
+  /**
+   *  A parameter to specify a UIMA type that keeps document-related 
+   *  information such as the document ID. 
+   */
+  public static final String PARAM_DOC_INFO_TYPE = "docinfo_type";
+  /**
+   * A parameter to specify the document-number attribute name.
+   * The UIMA type given by the parameter PARAM_DOC_INFO_TYPE should
+   * have this attribute. The attribute should store a unique
+   * document identifier. 
+   */
+  public static final String PARAM_DOCNO_ATTR = "docno_attr";
+                          
+  /** A name of the UIMA type that keeps document related information */
+  private String mDocInfoType;
+  /** A note of the attribute to store a unique document ID. */
+  private String mDocNoAttr;
+  
+  /** a class of the type mDocInfoType */
+  private Class<? extends Annotation>  mDocInfoTypeClass;
+  /** a method to obtain the document number */
+  private Method                       mGetDoNoMethod;
+  private int                          mDocInfoTypeId = -1;
+
+  /** Result of parsing the annotation mapping file. */
   private Map<String, MappingReader.TypeDescr> mMappingConfig;
 
   private BufferedWriter  mTextFileWriter; 
   private BufferedWriter  annotFileWriter; 
 
-  private String          viewName;
-  private String          textFieldName;
+  /** A view (SOFA) name to be used to extract annotations */
+  private String          mViewName;
+  /** 
+   * A name of the field (also the name of the tag in the XML file)
+   * that keeps annotated text (but not the annotations themselves).
+   */
+  private String          mTextFieldName;
   
   /**
-   * <p>This will provide unique ids within a single annotating thread only.
+   * <p>
+   * This class members provides unique IDs within a single annotating thread only.
    * It is not a problem for annographix (b/c it cares only about uniqueness
-   * of annotation ids within a single document), but will be problematic
+   * of annotation IDs within a single document), but will be problematic
    * if generate several annotation files in parallel and fed them to Indri.
-   * Indri doesn't seem to tolerate non-unique annotation ids.</p>
+   * Indri doesn't tolerate non-unique annotation IDs.
+   * </p>
    * 
-   * <p><b>NOTE:</b> annotation ids must start with 1, b/c 0 is used to
+   * <p>
+   * <b>NOTE:</b> annotation IDs must start with 1, b/c 0 is used to
    * denote a missing parent annotation.
    * </p>
    */
   private int mAnnotationId = 1; 
 
-  public class FilePair {
-    public File         f;
-    public OutputStream fw;
-
-    public FilePair(File _f, OutputStream _fw) { f = _f; fw = _fw; } 
-  }; 
-
-  private FilePair InitOutFile(UimaContext context, 
-                                     String fileParamName) throws ResourceInitializationException {
-
-		// extract configuration parameter settings
-		String oFileName = (String) context.getConfigParameterValue(fileParamName);
-		// Output file should be specified in the descriptor
-		if (oFileName == null) {
-			throw new ResourceInitializationException(
-					ResourceInitializationException.CONFIG_SETTING_ABSENT,
-					new Object[] { fileParamName });
-		}
-		// If specified output directory does not exist, try to create it
-		File outFile = new File(oFileName);
-		if (outFile.getParentFile() != null
-				&& !outFile.getParentFile().exists()) {
-			if (!outFile.getParentFile().mkdirs())
-				throw new ResourceInitializationException(
-						ResourceInitializationException.RESOURCE_DATA_NOT_VALID,
-						new Object[] { oFileName, fileParamName });
-		}
-		OutputStream fileWriter = null;
-		
-		try {
-			fileWriter = CompressUtils.createOutputStream(outFile.getAbsolutePath());
-		} catch (IOException e) {
-			throw new ResourceInitializationException(e);
-		}
-		
-		return new FilePair(outFile, fileWriter);
-  }
-
+  /**
+   * See {@link CasAnnotator_ImplBase#initialize(UimaContext)}.
+   */
   @Override
   public void initialize(UimaContext context) throws ResourceInitializationException {
     super.initialize(context);
     
-    viewName = (String) context.getConfigParameterValue(UtilConst.CONFIG_VIEW_NAME);
+    mViewName = 
+          (String) context.getConfigParameterValue(UtilConst.CONFIG_VIEW_NAME);
     
-    if (viewName == null)
+    if (mViewName == null)
       throw new ResourceInitializationException(
-                    new Exception("Missing parameter: " + UtilConst.CONFIG_VIEW_NAME));    
+             new Exception("Missing parameter: " + UtilConst.CONFIG_VIEW_NAME));    
     
-    textFieldName = (String) context.getConfigParameterValue(UtilConst.CONFIG_TEXT4ANNOT_FIELD);
+    mTextFieldName = (String) 
+              context.getConfigParameterValue(UtilConst.CONFIG_TEXT4ANNOT_FIELD);
     
-    if (textFieldName == null)
+    if (mTextFieldName == null)
       throw new ResourceInitializationException(
-                    new Exception("Missing parameter: " + UtilConst.CONFIG_TEXT4ANNOT_FIELD));    
+                    new Exception("Missing parameter: " + 
+                                  UtilConst.CONFIG_TEXT4ANNOT_FIELD));   
+    
+    mDocInfoType = 
+        (String) context.getConfigParameterValue(PARAM_DOC_INFO_TYPE);
+    
+    if (mDocInfoType == null)
+      throw new ResourceInitializationException(
+          new Exception("Missing parameter: " + PARAM_DOC_INFO_TYPE));
 
-    FilePair pTxt = InitOutFile(context, "outTextFile");
+    
+    try {
+      mDocInfoTypeClass = Class.forName(mDocInfoType).asSubclass(Annotation.class);
+    } catch (ClassNotFoundException e) {
+      throw new ResourceInitializationException(
+          new Exception("Type: '" + mDocInfoType + "' doesn't exist!"));
+    }
+    
+    mDocNoAttr = 
+        (String) context.getConfigParameterValue(PARAM_DOCNO_ATTR);
+    
+    if (mDocNoAttr == null)
+      throw new ResourceInitializationException(
+          new Exception("Missing parameter: " + PARAM_DOCNO_ATTR));
+    
+    String funcName = "get" + mDocNoAttr;
+    Exception eMemorize = null;
+    try {
+      mGetDoNoMethod = mDocInfoTypeClass.getMethod(funcName);
+    } catch (NoSuchMethodException e1) {
+      eMemorize = e1;
+    } catch (SecurityException e1) {
+      eMemorize = e1;
+    }
+    if (eMemorize != null) {
+      throw new ResourceInitializationException(
+          new Exception(String.format(          
+                                  "Cannot obtain attribute-reading function, " +
+                                  "type: '%s', attribute '%s', exception '%s'",
+                                  mDocInfoType, mDocNoAttr, eMemorize.toString()))); 
+    }
+    
+    for (Field f: mDocInfoTypeClass.getFields()) 
+    if (f.getName().equals("type")){
+      eMemorize = null;      
+      try {
+        mDocInfoTypeId = f.getInt(null);
+      } catch (IllegalArgumentException e1) {
+        eMemorize = e1;
+      } catch (IllegalAccessException e1) {
+        eMemorize = e1;
+      }
+      if (eMemorize != null) {
+        throw new ResourceInitializationException(
+            new Exception(String.format(          
+                                    "Cannot obtain type ID, " +
+                                    "type: '%s', exception '%s'",
+                                    mDocInfoType, eMemorize.toString())));        
+      }      
+    }
+    
+    if (mDocInfoTypeId < 0) {
+      throw new ResourceInitializationException(
+                  new Exception("Bug: cannot obtain a type id for the type: '"+
+                                 mDocInfoType + "'"));
+    }
+    
+    FilePair pTxt = InitOutFile(context, "out_text_file");
 
     mTextFileWriter = new BufferedWriter(new OutputStreamWriter(pTxt.fw));
  
-    FilePair pAnnot = InitOutFile(context, "outAnnotFile");
+    FilePair pAnnot = InitOutFile(context, "out_annot_file");
 
     annotFileWriter = new BufferedWriter(new OutputStreamWriter(pAnnot.fw));
     
     /* create the mapping configuration */
     MappingReader fieldMappingReader = new MappingReader();
-    String mappingFileParam = (String)context.getConfigParameterValue("mappingFile");
+    String mappingFileParam = 
+                    (String)context.getConfigParameterValue(PARAM_MAPPING_FILE);
     
     if (mappingFileParam == null) {
       throw new ResourceInitializationException(
-        ResourceInitializationException.CONFIG_SETTING_ABSENT,
-        new Object[] { "mappingFile" });
+          new Exception("Missing parameter: " + PARAM_MAPPING_FILE)
+      );
     }
     
     try{
@@ -182,60 +254,108 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
     }
   }
   
+  /**
+   * Here we check that the user specified correct names of types and attributes.   
+   */
   @Override
   public void typeSystemInit(TypeSystem typeSystem) throws AnalysisEngineProcessException {
     super.typeSystemInit(typeSystem);
     for (String key : mMappingConfig.keySet()) {
+      // 1. Check if the type exists
       Type type = typeSystem.getType(key);
       if (type==null) {
-        throw new AnalysisEngineProcessException("required_feature_structure_missing_from_cas",
-                new Object[]{key});
+        throw new AnalysisEngineProcessException(
+                    new Exception(String.format(
+                         "Annotation mapping file: Specified type '%s' does not exist", key
+                                               )
+                                  ));
       }
       
       MappingReader.TypeDescr desc = mMappingConfig.get(key);
+      // 2. Check if the type attribute exists
+      String attr = desc.tag;
+      if (type.getFeatureByBaseName(attr)==null) {
+        throw new AnalysisEngineProcessException(
+            new Exception(String.format(
+                "Annotation mapping file: attribute '%s' of the type type '%s' does not exist", 
+                                       attr, key)
+                          ));
+      }
       
-      if (type.getFeatureByBaseName(desc.tag)==null) {
-          throw new AnalysisEngineProcessException("required_attribute_missing", 
-                  new Object[]{desc.tag, type});
+      // 3. If we have a parent, let's check that the attribute also exists
+      if ((attr = desc.parent) !=  null)  {
+        if (type.getFeatureByBaseName(attr)==null) {
+          throw new AnalysisEngineProcessException(
+              new Exception(String.format(
+                  "Annotation mapping file: attribute '%s' of the type type '%s' does not exist", 
+                                         attr, key)
+                           ));        
+        }
       }
     }
   }
 
+  /**
+   * Main CAS processing function, see {@link CasAnnotator_ImplBase#process(CAS)}.
+   */
   @Override
   public void process(CAS aCAS) throws AnalysisEngineProcessException {
-		JCas jcas = null;
-		
-		try {
-			jcas = aCAS.getJCas();
-		} catch (CASException e) {
-			throw new AnalysisEngineProcessException(e);
-		}
-		
-	  String docId = null;
-/*	    
-	  FSIterator<Annotation> it = jcas.getAnnotationIndex(InputElement.type).iterator();
-	    
-	  if (it.hasNext()) {
-	    InputElement elem = (InputElement) it.next();
-	    docId = elem.getQuuid();
-	  } else {
-	    throw new AnalysisEngineProcessException(new Exception("Bug: missing InputElement!"));
-	  }
-*/	  
-	  XmlHelper xmlHlp = new XmlHelper();
+    JCas jcas = null;
+    
+    try {
+        jcas = aCAS.getJCas();
+    } catch (CASException e) {
+        throw new AnalysisEngineProcessException(e);
+    }
+        
+    String docId = null;
+    
+    FSIterator<Annotation> it = jcas.getAnnotationIndex(mDocInfoTypeId).iterator();
+    
+    if (it.hasNext()) {
+      Exception eMemorize = null;
+      Annotation docInfo = it.next();
+      try {
+        docId = (String) mGetDoNoMethod.invoke(docInfo);
+      } catch (IllegalAccessException e1) {
+        eMemorize = e1;
+      } catch (IllegalArgumentException e1) {
+        eMemorize = e1;
+      } catch (InvocationTargetException e1) {
+        eMemorize = e1;
+      }
+      if (eMemorize != null) {
+        throw new AnalysisEngineProcessException(
+                    new Exception(
+                          String.format("Cannot obtain document identifier from " +
+                                        " the annotation, type '%s' " +
+                                        " document number/id attribute '%s'",
+                                        mDocInfoType, mDocNoAttr)));    
+      }
+    } else {
+      throw new AnalysisEngineProcessException(new 
+          Exception("Missing annotation of the type: '" + mDocInfoType + "'"));
+    }
+    
+    if (it.hasNext()) {
+      throw new AnalysisEngineProcessException(new 
+          Exception("More than one annotation of the type: '" + mDocInfoType + "'"));
+    }
+
+    XmlHelper xmlHlp = new XmlHelper();
 
     try {
-      JCas viewJCAs = jcas.getView(viewName);
+      JCas viewJCAs = jcas.getView(mViewName);
       /*
        *  Let's make a sanity check here, even though it's a bit expensive:
        *  The text in the view should match the text in the annotation field.
        */
       String docText = aCAS.getDocumentText();
       Map<String, String> docFields = xmlHlp.parseXMLIndexEntry(docText);
-      String annotText = docFields.get(textFieldName);
+      String annotText = docFields.get(mTextFieldName);
       
       if (annotText == null) {
-        throw new Exception("Missing field: " + textFieldName + 
+        throw new Exception("Missing field: " + mTextFieldName + 
                             " docId: " + docId);
       }
       if (!annotText.equals(viewJCAs.getDocumentText())) {
@@ -256,7 +376,16 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
     
   }
 
-  private void writeAnnotations(String docId, JCas jcas) throws AnalysisEngineProcessException {    
+  /**
+   * A helper function that extracts annotations from CAS and stores them.
+   * 
+   * @param     docId   a unique document ID.
+   * @param     jcas    a {@link org.apache.uima.jcas.JCAS} interface to the CAS.
+   * 
+   * @throws AnalysisEngineProcessException
+   */
+  private void writeAnnotations(String docId, JCas jcas) 
+                                throws AnalysisEngineProcessException {    
     // First obtain unique annotation IDs
      
      Map<Annotation,Integer>  annotIds = new HashMap<Annotation,Integer>();
@@ -312,7 +441,6 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
        boolean annotWritten[] = new boolean[qty]; 
            
        /*
-        * 
         * This is to ensure that parentIds are 
         * written always before the child entries
         * that references their parents
@@ -320,9 +448,10 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
         * TODO: implement a more efficient version for complex graph structure.
         * 
         * This algorithm is not the most efficient one.
-        * Yet, it is complexity is O(qty * maxTreeDepth),
+        * Yet, it is complexity is O(qty * maximum length of the directed path),
         * which in many cases will be close to O(qty),
-        * because the maxTreeDepth will be small.
+        * because the maximum length of the directed path in a annotation graph
+        * is expected to be small.
         * 
         */
        int     writtenQty = 0;
@@ -359,8 +488,9 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
   
   }
 
-  /*
-   * documentText should already come in the right format.
+  /**
+   * Writes a text of the document that is already properly
+   * formatted (i.e., has Indri TEXTTREC format).
    */
   private void writeText(String documentText) 
                          throws ParserConfigurationException, TransformerException, IOException {
@@ -368,59 +498,116 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
     mTextFileWriter.write('\n');
   }
 
+  /**
+   * Saves on annotation in the annotation offset file.
+   * 
+   * @param     docNo       unique document identifier.
+   * @param     elem        an object of the type {@link OneAnnotationData} that
+   *                        keeps annotation-related data.
+   * @throws IOException
+   */
   private void writeOneAnnotation(String docNo, 
-                          OneAnnotationData elem) throws IOException {
-    annotFileWriter.write(docNo            + "\t");
+                                  OneAnnotationData elem) throws IOException {
+    annotFileWriter.write(docNo                     + "\t");
     annotFileWriter.write("TAG\t");
-    annotFileWriter.write(elem.mId               + "\t");
-    annotFileWriter.write(elem.mFieldName        + "\t");
-    annotFileWriter.write(elem.mStart            + "\t");
-    annotFileWriter.write((elem.mEnd - elem.mStart)    + "\t");
-    annotFileWriter.write(elem.mTagValue         + "\t");
-    annotFileWriter.write(elem.mParentId         + "\t");
+    annotFileWriter.write(elem.mId                  + "\t");
+    annotFileWriter.write(elem.mFieldName           + "\t");
+    annotFileWriter.write(elem.mStart               + "\t");
+    annotFileWriter.write((elem.mEnd - elem.mStart) + "\t");
+    annotFileWriter.write(elem.mTagValue            + "\t");
+    annotFileWriter.write(elem.mParentId            + "\t");
     annotFileWriter.write(UtilConst.PATTERN_WHITESPACE.matcher(elem.mTextValue).
                           replaceAll(" ") + "\n");
   }
 
-  /**
-  * Called when the entire collection is completed.
-  * 
-  * @see org.apache.uima.collection.CasConsumer#collectionProcessComplete(ProcessTrace)
+ /**
+  * Called after we processed the entire collection, we close the 
+  * output files here, see
+  * also {@link CasAnnotator_ImplBase#collectionProcessComplete()}.
   */
   @Override
   public void collectionProcessComplete() throws AnalysisEngineProcessException {
     try {
-      if (annotFileWriter != null) {
-        annotFileWriter.close();
-  		}
-  		if (mTextFileWriter != null) {
-  			mTextFileWriter.close();
-  		}
+      closeOutputFiles();
     } catch (IOException e) {
       throw new AnalysisEngineProcessException(e);
     }
-	}
+  }
 
-   /**
-    * Called if clean up is needed in case of exiting due to errors.
-    * 
-    * @see org.apache.uima.resource.Resource#destroy()
-    */
-	public void destroy() {
-		if (annotFileWriter != null) {
-			try {
-				annotFileWriter.close();
-			} catch (IOException e) {
-				// ignore IOException on destroy
-			}
-		}
-		if (mTextFileWriter != null) {
-			try {
-				mTextFileWriter.close();
-			} catch (IOException e) {
-				// ignore IOException on destroy
-			}
-		}
-	}
+  /**
+   * Closes output files.
+   * 
+   * @throws IOException
+   */
+  private void closeOutputFiles() throws IOException {
+    if (annotFileWriter != null) {
+      annotFileWriter.close();
+    }
+    if (mTextFileWriter != null) {
+      mTextFileWriter.close();
+    }
+  }
+
+ /**
+  * Some clean up in the case of an emergency exit, see also
+  * {@link org.apache.uima.resource.Resource#destroy()}.
+  */
+  public void destroy() {
+    try {
+      closeOutputFiles();
+    } catch (IOException e) {
+        // ignore IOException on destroy
+    }
+  }
+    
+  /**
+   * A helper class to store the result of opening a file for writing, 
+   * which comes as two related objects of the types File and OutputStream.
+   */
+  private class FilePair {
+    public File         f;
+    public OutputStream fw;
+
+    public FilePair(File _f, OutputStream _fw) { f = _f; fw = _fw; } 
+  }; 
+
+  /**
+   * Opens file for writing.
+   * 
+   * @param context             UIMA context variable.
+   * @param fileParamName       A file name.
+   * @return                    A an instance of the class {@link FilePair}.
+   * @throws ResourceInitializationException
+   */
+  private FilePair InitOutFile(UimaContext context, 
+                               String fileParamName) throws ResourceInitializationException {
+    // extract configuration parameter settings
+    String oFileName = (String) context.getConfigParameterValue(fileParamName);
+    // Output file should be specified in the descriptor
+    if (oFileName == null) {
+        throw new ResourceInitializationException(
+                ResourceInitializationException.CONFIG_SETTING_ABSENT,
+                new Object[] { fileParamName });
+    }
+    // If specified output directory does not exist, try to create it
+    File outFile = new File(oFileName);
+    if (outFile.getParentFile() != null
+            && !outFile.getParentFile().exists()) {
+        if (!outFile.getParentFile().mkdirs())
+            throw new ResourceInitializationException(
+                    ResourceInitializationException.RESOURCE_DATA_NOT_VALID,
+                    new Object[] { oFileName, fileParamName });
+    }
+    OutputStream fileWriter = null;
+    
+    try {
+        fileWriter = CompressUtils.createOutputStream(outFile.getAbsolutePath());
+    } catch (IOException e) {
+        throw new ResourceInitializationException(e);
+    }
+    
+    return new FilePair(outFile, fileWriter);
+  }   
 }
+
 

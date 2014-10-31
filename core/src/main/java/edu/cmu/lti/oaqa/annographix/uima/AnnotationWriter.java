@@ -94,17 +94,20 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
    */
   public static final String PARAM_DOC_INFO_TYPE = "docinfo_type";
   /**
-   * A parameter to specify the document-number attribute name.
-   * The UIMA type given by the parameter PARAM_DOC_INFO_TYPE should
-   * have this attribute. The attribute should store a unique
-   * document identifier. 
+   * A parameter to specify the getter function for the  document-number/id 
+   * attribute name. The UIMA type given by the parameter PARAM_DOC_INFO_TYPE 
+   * should  have this getter. It seems that the name of the function is 
+   * made as follows : get + attribute name with first letter uppercased.
+   * However, Leo is not 100% sure and, therefore, asks you to provide
+   * an exact name of the getter function.
+   *  
    */
-  public static final String PARAM_DOCNO_ATTR = "docno_attr";
+  public static final String PARAM_DOCNO_GETTER = "docno_getter";
                           
   /** A name of the UIMA type that keeps document related information */
   private String mDocInfoType;
   /** A note of the attribute to store a unique document ID. */
-  private String mDocNoAttr;
+  private String mDocNoGetter;
   
   /** a class of the type mDocInfoType */
   private Class<? extends Annotation>  mDocInfoTypeClass;
@@ -178,17 +181,16 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
           new Exception("Type: '" + mDocInfoType + "' doesn't exist!"));
     }
     
-    mDocNoAttr = 
-        (String) context.getConfigParameterValue(PARAM_DOCNO_ATTR);
+    mDocNoGetter = 
+        (String) context.getConfigParameterValue(PARAM_DOCNO_GETTER);
     
-    if (mDocNoAttr == null)
+    if (mDocNoGetter == null)
       throw new ResourceInitializationException(
-          new Exception("Missing parameter: " + PARAM_DOCNO_ATTR));
+          new Exception("Missing parameter: " + PARAM_DOCNO_GETTER));
     
-    String funcName = "get" + mDocNoAttr;
     Exception eMemorize = null;
     try {
-      mGetDoNoMethod = mDocInfoTypeClass.getMethod(funcName);
+      mGetDoNoMethod = mDocInfoTypeClass.getMethod(mDocNoGetter);
     } catch (NoSuchMethodException e1) {
       eMemorize = e1;
     } catch (SecurityException e1) {
@@ -199,7 +201,7 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
           new Exception(String.format(          
                                   "Cannot obtain attribute-reading function, " +
                                   "type: '%s', attribute '%s', exception '%s'",
-                                  mDocInfoType, mDocNoAttr, eMemorize.toString()))); 
+                                  mDocInfoType, mDocNoGetter, eMemorize.toString()))); 
     }
     
     FilePair pTxt = InitOutFile(context, "out_text_file");
@@ -312,7 +314,7 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
                             String.format("Cannot obtain document identifier from " +
                                           " the annotation, type '%s' " +
                                           " document number/id attribute '%s'",
-                                          mDocInfoType, mDocNoAttr)));    
+                                          mDocInfoType, mDocNoGetter)));    
         }
       } else {
         throw new AnalysisEngineProcessException(new 

@@ -37,8 +37,8 @@
         <mandatory>true</mandatory>
       </configurationParameter>
       <configurationParameter>
-        <name>docno_attr</name>
-        <description>A parameter to specify the document-number attribute name.</description>
+        <name>docno_getter</name>
+        <description>A parameter to specify a getter function for the document-number/id attribute.</description>
         <type>String</type>
         <multiValued>false</multiValued>
         <mandatory>true</mandatory>
@@ -91,21 +91,21 @@
          </value>
       </nameValuePair>
       <nameValuePair>
-        <name>docno_attr</name>
+        <name>docno_getter</name>
         <value>
-          <string>DocNo</string>
+          <string>getDocNo</string>
         </value>
       </nameValuePair>
       <nameValuePair>
         <name>out_text_file</name>
         <value>
-          <string>output/text</string>
+          <string>output/text.gz</string>
         </value>
       </nameValuePair>
       <nameValuePair>
         <name>out_annot_file</name>
         <value>
-          <string>output/annot_offsets</string>
+          <string>output/annot_offsets.gz</string>
         </value>
       </nameValuePair>
     <nameValuePair>

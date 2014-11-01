@@ -15,12 +15,12 @@ import org.apache.uima.jcas.tcas.Annotation_Type;
 
 /** Document information
  * Updated by JCasGen Wed Oct 29 22:25:36 EDT 2014
- * @generated */
+ *  */
 public class DocumentInfo_Type extends Annotation_Type {
-  /** @generated */
+  /**  */
   @Override
   protected FSGenerator getFSGenerator() {return fsGenerator;}
-  /** @generated */
+  /**  */
   private final FSGenerator fsGenerator = 
     new FSGenerator() {
       public FeatureStructure createFS(int addr, CASImpl cas) {
@@ -36,25 +36,25 @@ public class DocumentInfo_Type extends Annotation_Type {
         } else return new DocumentInfo(addr, DocumentInfo_Type.this);
   	  }
     };
-  /** @generated */
+  /**  */
   @SuppressWarnings ("hiding")
   public final static int typeIndexID = DocumentInfo.typeIndexID;
-  /** @generated 
+  /**  
      @modifiable */
   @SuppressWarnings ("hiding")
   public final static boolean featOkTst = JCasRegistry.getFeatOkTst("edu.cmu.lti.oaqa.annographix.types.DocumentInfo");
  
-  /** @generated */
+  /**  */
   final Feature casFeat_DocNo;
-  /** @generated */
+  /**  */
   final int     casFeatCode_DocNo;
-  /** @generated */ 
+  /**  */ 
   public String getDocNo(int addr) {
         if (featOkTst && casFeat_DocNo == null)
       jcas.throwFeatMissing("DocNo", "edu.cmu.lti.oaqa.annographix.types.DocumentInfo");
     return ll_cas.ll_getStringValue(addr, casFeatCode_DocNo);
   }
-  /** @generated */    
+  /**  */    
   public void setDocNo(int addr, String v) {
         if (featOkTst && casFeat_DocNo == null)
       jcas.throwFeatMissing("DocNo", "edu.cmu.lti.oaqa.annographix.types.DocumentInfo");
@@ -65,7 +65,7 @@ public class DocumentInfo_Type extends Annotation_Type {
 
 
   /** initialize variables to correspond with Cas Type and Features
-	* @generated */
+	*  */
   public DocumentInfo_Type(JCas jcas, Type casType) {
     super(jcas, casType);
     casImpl.getFSClassRegistry().addGeneratorForType((TypeImpl)this.casType, getFSGenerator());

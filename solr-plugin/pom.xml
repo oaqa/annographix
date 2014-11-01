@@ -1,0 +1,58 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>edu.cmu.lti.oaqa.annographix</groupId>
+    <artifactId>solr-plugin</artifactId>
+    <version>3.0-SNAPSHOT</version>
+    <name>SOLR ANNOtation GRAPH IndeXing: structured information retrival using SOLR, core plugin.</name>
+    <inceptionYear>2014</inceptionYear>
+    <packaging>jar</packaging>
+
+    <parent>
+      <groupId>edu.cmu.lti.oaqa</groupId>
+      <artifactId>annographix</artifactId>
+      <version>3.0-SNAPSHOT</version>
+    </parent>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <dependencies>
+
+        <dependency>
+          <groupId>org.apache.solr</groupId>
+          <artifactId>solr-solrj</artifactId>
+          <version>4.6.0</version>
+        </dependency>
+
+        <dependency>
+        <groupId>org.apache.solr</groupId>
+        <artifactId>solr-core</artifactId>
+        <version>4.6.0</version>
+          <exclusions>
+            <exclusion>
+              <artifactId>guava</artifactId>
+              <groupId>com.google.guava</groupId>
+            </exclusion>
+          </exclusions>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+          <version>4.11</version>
+        </dependency>
+
+        <dependency>
+          <groupId>com.cedarsoftware</groupId>
+          <artifactId>java-util</artifactId>
+          <version>1.12.0</version>
+        </dependency>
+
+    </dependencies>
+</project>

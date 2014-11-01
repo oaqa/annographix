@@ -99,13 +99,13 @@
       <nameValuePair>
         <name>out_text_file</name>
         <value>
-          <string>output/text.gz</string>
+          <string>output/text.txt.gz</string>
         </value>
       </nameValuePair>
       <nameValuePair>
         <name>out_annot_file</name>
         <value>
-          <string>output/annot_offsets.gz</string>
+          <string>output/annot_offsets.tsv.gz</string>
         </value>
       </nameValuePair>
     <nameValuePair>

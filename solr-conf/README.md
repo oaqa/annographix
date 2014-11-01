@@ -1,5 +1,4 @@
-This file contains only configs, but no binaries. You can copy configs to an example Solr installation directory.
-You can use the script StartSolr.sh to start Solr. It also creates a simple script StopSolr.sh that can be used to kill the Solr instance (note that there are better ways to stop/start Solr).
+This directory contains only configs, but no binaries. You can copy configs to an example Solr installation directory. You can use the script StartSolr.sh to start Solr. It also creates a simple script StopSolr.sh that can be used to kill the Solr instance (note that there are better ways to stop/start Solr).
 
 ###port###
 -------------------

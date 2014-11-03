@@ -338,16 +338,19 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
         throw new Exception("Missing field: " + mTextFieldName + 
                             " docId: " + docId);
       }
-      if (!annotText.equals(viewJCas.getDocumentText())) {
-        System.err.println("Annotation text:");
-        System.err.println(annotText);
+      String jcasText = viewJCas.getDocumentText();
+      if (!annotText.equals(jcasText)) {
+        System.err.println("Annotation (jcasView) text:");
+        System.err.println(jcasText);
         System.err.println("====================================");
         System.err.println("Document text:");
         System.err.println(annotText);
         System.err.println("====================================");
 
-        throw new Exception("Non-matching annotation texts for docId: " + docId + 
-                            " view name: " + mViewName);        
+        throw new Exception(String.format("Non-matching annotation texts for docId: %d " + docId + 
+                            " view name: %s " + 
+                            "text length: %d jcasView text length: %d ", docId, mViewName,  
+                                          annotText.length(), jcasText.length()));        
       }
       
       String docNo = docFields.get(UtilConst.INDEX_DOCNO);

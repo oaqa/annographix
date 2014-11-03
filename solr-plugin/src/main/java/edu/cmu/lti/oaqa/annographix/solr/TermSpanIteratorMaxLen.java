@@ -128,13 +128,14 @@ public class TermSpanIteratorMaxLen extends TermSpanIterator {
  */
 class ElemInfoDataHolder implements Comparable<ElemInfoDataHolder> {
   ElemInfoDataHolder(OnePostStateBase post) {
-    mData = post.getAllElements();
+    mPost = post;
   }
   
   /**
    * Resets to zero the index indicating the current entry.  
    */
   public void reset() {
+    mData = mPost.getAllElements();
     mCurr = 0;
   }
   
@@ -162,7 +163,8 @@ class ElemInfoDataHolder implements Comparable<ElemInfoDataHolder> {
     return getCurrOffset() - o.getCurrOffset();  
   }
   
-  
+
+  private OnePostStateBase  mPost;  
   private ElemInfoData[]    mData;
-  private int               mCurr = 0;
+  private int               mCurr = 0;  
 }

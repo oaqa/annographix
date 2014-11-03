@@ -35,7 +35,7 @@ public class ParserPluginVer3  extends QParserPlugin {
                              SolrParams localParams,
                              SolrParams params, 
                              SolrQueryRequest req) {
-    return new StructRetrQParser(qstr, localParams, params, req);
+    return new StructRetrQParserVer3(qstr, localParams, params, req);
   }
 
   @Override
@@ -45,11 +45,11 @@ public class ParserPluginVer3  extends QParserPlugin {
 }
 
 
-class StructRetrQParser extends QParser {
+class StructRetrQParserVer3 extends QParser {
   /** a query boost */
   float     mBoost = 1.0f;
   /** a current parser version */
-  Integer   mVersion = 3;
+  String    mVersion = "3";
   /** A size (in the # of chars) of the window where we look for occurrences. */
   Integer   mSpan = Integer.MAX_VALUE;
   /** a name of the text field that is annotated */
@@ -66,7 +66,7 @@ class StructRetrQParser extends QParser {
   public final static String PARAM_TEXT_FIELD = UtilConst.CONFIG_TEXT4ANNOT_FIELD;
   public final static String PARAM_ANNOT_FIELD = UtilConst.CONFIG_ANNOTATION_FIELD;
   
-  public StructRetrQParser(String qstr, 
+  public StructRetrQParserVer3(String qstr, 
                             SolrParams localParams, 
                             SolrParams params,
       SolrQueryRequest req) {
@@ -75,8 +75,8 @@ class StructRetrQParser extends QParser {
     if (localParams.getFloat(PARAM_BOOST) != null)
       mBoost    = localParams.getFloat(PARAM_BOOST);
     
-    if (localParams.getInt(PARAM_VERSION) != null)
-      mVersion  = localParams.getInt(PARAM_VERSION);
+    if (localParams.get(PARAM_VERSION) != null)
+      mVersion  = localParams.get(PARAM_VERSION).trim();
     
     mAnnotFieldName = localParams.get(PARAM_ANNOT_FIELD,
         UtilConst.DEFAULT_ANNOT_FIELD);
@@ -108,7 +108,7 @@ class StructRetrQParser extends QParser {
     String text = qstr.trim().toLowerCase();
     
     // TODO: in the future we may support more parsers
-    if (mVersion.equals(3)) {
+    if (!mVersion.equalsIgnoreCase("3")) {
       throw new SyntaxError("Only version 3 is currently supported.");
     }
     

@@ -33,7 +33,7 @@ import org.apache.lucene.util.ArrayUtil;
  *    
  **/
 //  TODO: Try to use some light-weight compression?
-public class AnnotEncoder extends AbstractEncoder 
+public class AnnotEncoderVer3 extends AbstractEncoder 
         implements PayloadEncoder {
   @Override
   public BytesRef encode(char[] buffer, int offset, int length) {

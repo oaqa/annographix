@@ -46,22 +46,27 @@ public abstract class OnePostStateBase {
    * 
    * Creates a wrapper of the right type.
    * 
-   * @param posting     a posting to wrap.
-   * @param type        a posting type: annotation or regular token.
-   * @param connectQty  a number of postings connected with a given node/posting 
+   * @param posting     posting to wrap.
+   * @param token       textual representation.
+   * @param type        posting type: annotation or regular token.
+   * @param connectQty  number of postings connected with a given node/posting 
    *                    via a query graph.
    * 
-   * @return            a reference to the newly created object
+   * @return            reference to the newly created object
    */
   public static OnePostStateBase createPost(DocsAndPositionsEnum posting, 
+                                            String    token,
                                             FieldType type,
                                             int connectQty) {
     return type == FieldType.FIELD_ANNOTATION ? 
-                      new OnePostStateAnnot(posting, connectQty):
-                      new OnePostStateToken(posting, connectQty);
+                      new OnePostStateAnnot(token, type, posting, connectQty):
+                      new OnePostStateToken(token, type, posting, connectQty);
   }
   
-  public OnePostStateBase(DocsAndPositionsEnum posting, int connectQty) {
+  public OnePostStateBase(String token, FieldType type,
+                          DocsAndPositionsEnum posting, int connectQty) {
+    mToken  = token;
+    mFieldType = type;
     mPosting = posting;
     mConnectQty = connectQty;
     extendElemInfo(INIT_SIZE);
@@ -132,8 +137,6 @@ public abstract class OnePostStateBase {
                                            int minIndx,
                                            int linSearchIter) {
     
-    // Let's do some exponential searching
-    int len = mSortedElemInfo.length;
     minIndx = Math.max(0, minIndx);
 
    /*
@@ -142,12 +145,12 @@ public abstract class OnePostStateBase {
     */
     
     for (int i = 0; 
-        i < linSearchIter && minIndx < len; 
+        i < linSearchIter && minIndx < mQty; 
         ++i, ++minIndx) {
       if (mSortedElemInfo[minIndx].mStartOffset > offsetToExceed) return minIndx;
     }
 
-    if (minIndx >= len) return len;       
+    if (minIndx >= mQty) return mQty;       
     
     mSearchKey.mStartOffset = offsetToExceed;
     int res = Arrays.binarySearch(mSortedElemInfo, 
@@ -262,21 +265,28 @@ public abstract class OnePostStateBase {
   
   /**
    * Check if constraints involving the current node and the node
-   * with the index sortIndx are satisfied. 
-   * <p>The complexity of this operation is O(Nconstr). In real
-   * scenarios, we expect Nconstr to be small (around 2-5). 
-   * In this case, iterating over an array is faster than 
-   * retrieving data from a hash.  
+   * with the index in the range [sortIndxMin, sortIndxMax] are satisfied.
+   *  
+   * <p>
+   * The complexity of this operation is O(Nconstr). 
+   * In reality, we expect Nconstr to be quite small (around 2-5). 
+   * Thus, iterating over an array is faster than 
+   * retrieving data from a TreeMap.  
+   * </p>
    * 
-   * @param     sortIndx
+   * @param     minSortIndx the minimum id of the node participating in a constraint.
+   * @param     maxSortIndx the minimum id of the node participating in a constraint.
    * 
    * @return    true if constraints are satisfied and false otherwise.
    */
-  public boolean checkConstraints(int sortIndx) {
+  public boolean checkConstraints(int minSortIndx,
+                                  int maxSortIndx) {
     for (int k = 0; k < mConstrType.length; ++k) {
       OnePostStateBase  nodeOther = mConstrNode[k];
       
-      if (nodeOther.getSortIndex() == sortIndx) { 
+      int otherSortIndx = nodeOther.getSortIndex();
+      if (otherSortIndx >= minSortIndx && 
+          otherSortIndx <= maxSortIndx) { 
         ElemInfoData    eCurr = mSortedElemInfo[mCurrElemIndx];
         ElemInfoData    eOther = nodeOther.getCurrElement();
         
@@ -323,9 +333,15 @@ public abstract class OnePostStateBase {
     }
   }
   
+  protected String                  mToken;
+  protected FieldType               mFieldType;
   protected DocsAndPositionsEnum    mPosting;
-  protected int                     mDocId=1;
-  protected int                     mCurrElemIndx=-1;
+  /** 
+   * The current document id, should always be -1 in the beginning,
+   * before {@link #advance(int)} or {@link #nextDoc()} is called.
+   */
+  protected int                     mDocId=-1;
+  protected int                     mCurrElemIndx=0;
   protected int                     mQty = 0;
   /** Elements are supposed to be started by offset. */
   protected ElemInfoData            mSortedElemInfo[] = new ElemInfoData[0];

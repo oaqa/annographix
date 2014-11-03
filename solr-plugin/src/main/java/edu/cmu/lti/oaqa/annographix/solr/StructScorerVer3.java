@@ -120,13 +120,15 @@ public class StructScorerVer3 extends Scorer {
     for(int i = 0; i < tokQty; ++i) { 
       allPostListUnsorted.add(
           OnePostStateBase.createPost(postings[i], 
+                                      queryParse.getTokens().get(i),
                                       queryParse.getTypes().get(i),
                                       queryParse.getConnectQty(i))
       );
     }
     if (coverAnnotPost != null) {
       mCoverAnnotPost = 
-        OnePostStateBase.createPost(coverAnnotPost, 
+        OnePostStateBase.createPost(coverAnnotPost,
+                                    "", // TODO ensure that it is always empty actually 
                                     FieldType.FIELD_ANNOTATION,
                                     0);
       allPostListUnsorted.add(mCoverAnnotPost);
@@ -220,6 +222,9 @@ public class StructScorerVer3 extends Scorer {
    */
   @Override
   public int nextDoc() throws IOException {
+    if (mCurrDocId == DocIdSetIterator.NO_MORE_DOCS) {
+      return mCurrDocId;
+    }
     return advance(mCurrDocId + 1);  
   }
 

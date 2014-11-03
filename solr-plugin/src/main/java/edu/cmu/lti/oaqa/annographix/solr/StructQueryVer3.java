@@ -192,24 +192,25 @@ public class StructQueryVer3 extends Query {
     @Override
     public String toString() { return "weight(" + getQuery() + ")"; }
     
-    /*
-     *  Leo believes that getValueForNormalization() & normalize() are not
-     *  relevant (and will not be called) in this implementation, because
-     *  there is only one way to create an instance of this weight class.
-     *  Namely, via a constructor. The constructor, then, generate instances
-     *  of two weight calsses based on the term and collection statistics.
+    /**
+     * 
+     * {@link #getValueForNormalization()} and {@link #normalize(float, float)}
+     * are implemented similarly to  
+     * {@link org.apache.lucene.search.PhraseWeight#getValueForNormalization()}
+     * and 
+     * {@link org.apache.lucene.search.PhraseWeight#normalize(float, float)}.
      * 
      */
     @Override
     public float getValueForNormalization() {
-      throw new RuntimeException(
-          "Bug: getValueForNormalization() is not supposed to be called ");
+      return mWeightTextField.getValueForNormalization() +
+             mWeightAnnotField.getValueForNormalization();
     }
 
     @Override
     public void normalize(float queryNorm, float topLevelBoost) {
-      throw new RuntimeException(
-          "Bug: normalize() is not supposed to be called ");
+      mWeightTextField.normalize(queryNorm, topLevelBoost);
+      mWeightAnnotField.normalize(queryNorm, topLevelBoost);
     }
     
     /**
@@ -309,19 +310,35 @@ public class StructQueryVer3 extends Query {
                                        new DocsAndPositionsEnum[mTerms.size()];
       DocsAndPositionsEnum      coverAnnotPost = null;
       
+      Fields fld = reader.fields();
+      if (null == fld.terms(mTextFieldName)) {
+        throw new RuntimeException(
+                    String.format(
+                        "Text field name: '%s' doesn't exist, " +
+                        "specify a correct text field name " +
+                        "using the query parameter '%s'",
+                        mTextFieldName, StructRetrQParserVer3.PARAM_TEXT_FIELD));        
+      }
+      if (null == fld.terms(mAnnotFieldName)) {
+        throw new RuntimeException(
+                    String.format(
+                        "Annotation field name: '%s' doesn't exist, " +
+                        "specify a correct annotation field name " +
+                        "using the query parameter '%s'",
+                        mAnnotFieldName, StructRetrQParserVer3.PARAM_ANNOT_FIELD));        
+      }
+      
       // mTextFieldName & mAnnotFieldName come from the enclosing class 
       final Terms fieldTermsTextField = reader.terms(mTextFieldName);
       final Terms fieldTermsAnnotField = reader.terms(mAnnotFieldName);
-      if (fieldTermsTextField == null) {
-        throw new RuntimeException("Bug: fieldTermsTextField is null");
-      }
-      if (fieldTermsAnnotField == null) {
-        throw new RuntimeException("Bug: fieldTermsAnnotField is null");
-      }
+      
+
+      if (fieldTermsTextField == null)  return null;
+      if (fieldTermsAnnotField == null) return null;      
       
       // Reuse TermsEnum below:
       final TermsEnum termTextFieldEnum = fieldTermsTextField.iterator(null);
-      final TermsEnum termAnnotFieldEnum = fieldTermsTextField.iterator(null);
+      final TermsEnum termAnnotFieldEnum = fieldTermsAnnotField.iterator(null);
       
       for (int i = 0; i < mTerms.size(); ++i) {
         postings[i] = initPosting(context,
@@ -332,6 +349,8 @@ public class StructQueryVer3 extends Query {
                                   mTermContexts.get(i),
                                   termTextFieldEnum,
                                   termAnnotFieldEnum);
+        /* We have an AND query if any elements is missing, there's nothing to return */
+        if (null == postings[i]) return null;
       }
       if (mCoverAnnotContext != null) {
         coverAnnotPost = initPosting(context,
@@ -342,6 +361,8 @@ public class StructQueryVer3 extends Query {
                                     mCoverAnnotContext,
                                     null /* don't need it here */,
                                     termAnnotFieldEnum);
+        /* We have an AND query if any elements is missing, there's nothing to return */
+        if (null == coverAnnotPost) return null;
       }
       
       

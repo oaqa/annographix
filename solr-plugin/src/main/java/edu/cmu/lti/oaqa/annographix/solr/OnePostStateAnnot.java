@@ -23,6 +23,8 @@ import java.io.IOException;
 
 import org.apache.lucene.index.DocsAndPositionsEnum;
 
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
+
 
 
 /**
@@ -34,12 +36,15 @@ import org.apache.lucene.index.DocsAndPositionsEnum;
 class OnePostStateAnnot extends OnePostStateBase {
 
   /**
+   * @param token       textual representation.
+   * @param type        posting type: annotation or regular token.
    * @param posting     an already initialized posting list.
    * @param connectQty  a number of postings connected with a given node/posting 
    *                    via a query graph.
    */
-  public OnePostStateAnnot(DocsAndPositionsEnum posting, int connectQty) {
-    super(posting, connectQty);
+  public OnePostStateAnnot(String token, FieldType type,
+                           DocsAndPositionsEnum posting, int connectQty) {
+    super(token, type, posting, connectQty);
   }
 
   /**
@@ -50,7 +55,7 @@ class OnePostStateAnnot extends OnePostStateBase {
     readDocElementsBase();
     for (int i = 0; i < mQty; ++i) {
       mPosting.nextPosition();   
-      AnnotEncoder.decode(mPosting.getPayload(), mSortedElemInfo[i]);
+      AnnotEncoderVer3.decode(mPosting.getPayload(), mSortedElemInfo[i]);
     }
   }
 

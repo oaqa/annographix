@@ -65,22 +65,28 @@ public abstract class TermSpanIterator {
         OnePostStateBase post = mPostSorted[k];
         int   elemQty = post.getQty();
         
-        int nextStart = post.findElemIndexWithLargerOffset(
-                                                    mCurrSpanEndOffset - 1, 
+        int nextStartIdx = post.findElemIndexWithLargerOffset(
+                                                    mCurrSpanStartOffset - 1, 
                                                     mStartElemIndx[k],
                                                     MIN_LINEAR_SEARCH_QTY);
-        if (nextStart >= elemQty) {
+        mStartElemIndx[k] = nextStartIdx;        
+        
+        if (nextStartIdx >= elemQty) {
           /*
-           *  Because we cannot find at least one element with the start
-           *  offset >= mCurrSpanEndOffset, no match is possible
-           *  (a match should include all elements). Thus, we can save some
+           *  We cannot find at least one element with the start
+           *  offset >= mCurrSpanEndOffset. Because, starting offsets
+           *  are non-decreasing, the same will be true for all following
+           *  spans.
+           *  
+           *  Because are considering only AND queries, no further
+           *  complete matches are possible. Thus, we can save some
            *  effort by forcibly terminating the in-document iteration earlier.  
            */
           finishSpanIteration();
           return false;
         }
         
-        ElemInfoData nextElem = post.getElement(nextStart);
+        ElemInfoData nextElem = post.getElement(nextStartIdx);
         if (nextElem.mStartOffset >= mCurrSpanEndOffset) {
           /*
            *  uups the next found element is actually to the right of the current
@@ -89,7 +95,6 @@ public abstract class TermSpanIterator {
            *  [ current covering annotation ] [next element]
            *  
            */
-          mStartElemIndx[k] = nextStart;
           bOk = false;
           break;
         }
@@ -122,7 +127,16 @@ public abstract class TermSpanIterator {
   
   
   /**
-   * Checks if span constraints can be satisfied.
+   * Checks if span constraints can be satisfied. 
+   * 
+   * <p>Constraints include:
+   * parent-child and containment relationship, as well as containment
+   * inside the span. Because ending offsets of indexed elements do not
+   * necessarily increase monotonically while we monotonically increase 
+   * starting offsets, the element fitting into the span may follow 
+   * an element that can be fit into the span only partially. To ensure
+   * that all elements inside the span are considered, we need to iterate
+   * until the starting offset becomes >= than the span's end offset.
    * 
    * <p>This is a recursive function that accepts a starting posting index.
    * Postings are sorted in the order of decreasing connectedness (i.e.,
@@ -151,7 +165,7 @@ public abstract class TermSpanIterator {
    *            the span that satisfy the constraints, or false otherwise.
    */
   public boolean checkSpanConstraints(int startPostIndex) {
-    if (startPostIndex >= mPostConnectQty) {
+    if (startPostIndex >= mPostSorted.length) {
     // We checked successfully all the constraints, yay!
       return true;
     }
@@ -163,31 +177,56 @@ public abstract class TermSpanIterator {
          ++elemIndx) {
       elem.setCurrElemIndex(elemIndx);
       /*
-       * Note that spans are sorted by start offset,
-       * so it is possible that end offsets are not changing
-       * monotonically. Hence, we don't break the first time
-       * we see the end offset beyond the boundary.
-       * We ignore the element and proceed to check the next one,
-       * because it may still be completely within the span.
+       * Note that spans are sorted by start offset and for elements
+       * with indices in the range 
+       * [mStartElemIndx[startPostIndex],mEndElemIndx[startPostIndex]] starting
+       * offsets are between the start and end offset of the current span.
+       * 
+       * However, it is not guaranteed that end offsets fit into the current span.
+       * Due to non-monotonicity of end offsets (as the function of start offset),
+       * one element may fall out the current span while some following elements
+       * may still fit in.
+       *  
+       * Hence, we don't exit the loop the first time we see the end offset
+       * beyond the span boundary. Instead, we ignore such element and 
+       * proceed to checking the next one.
        * 
        * An example (square brackets denote annotation boundary):
-       * 
-       *    [      ]
-       *     [   ]
-       * 
+       *    [     ]       span
+       *    [      ]      element 1 (fits in only partially)
+       *     [   ]        element 2 (fits in completely)
        */
-      if (elem.getCurrElement().mEndOffset > mCurrSpanEndOffset)
+      ElemInfoData currElement = elem.getCurrElement();
+      if (currElement.mEndOffset > mCurrSpanEndOffset)
         continue;
-      
-      
-      // Check constraints related to earlier postings
+          
       boolean bOk = true;
-      for (int k = 0; k < startPostIndex; ++k)
-      if (!mPostSorted[k].checkConstraints(startPostIndex)) {
-        bOk = false; 
-        break;
+      /*
+       *  Check constraints related to earlier postings,
+       *  but only if we are dealing with connected components.
+       *  We have two types of such constraints: when the current
+       *  node is constraint and the current node is constraining.
+       *  
+       *  Recall that posts are sorted in such a way,
+       *  that posts with indices >= mPostConnectQty are not
+       *  constraining other posts and 
+       *  are not being constrained by other posts.
+       */
+      if (startPostIndex < mPostConnectQty) {
+        // Current node is constraining
+        if (startPostIndex > 0 &&
+            !mPostSorted[startPostIndex].checkConstraints(0, startPostIndex - 1)) {
+          bOk = false;
+        } else {
+          for (int k = 0; k < startPostIndex; ++k)
+         // Current node is constraint
+            if (!mPostSorted[k].checkConstraints(startPostIndex, startPostIndex)) {
+              bOk = false; 
+              break;
+            } 
+        }
       }
-      
+         
       if (bOk) {
         /*
          *  Ok, we are good for post indices 0..startPostIndex (no
@@ -225,7 +264,7 @@ public abstract class TermSpanIterator {
    * This function should be called from every child {@link #initSpanIteration()} function.
    */
   protected void initSpanIterationBase() {
-    mCurrSpanEndOffset   = -1;
+    mCurrSpanEndOffset   = 0;
     mCurrSpanStartOffset = -1;
     for (int i = 0; i < mPostSorted.length; ++i)
       mStartElemIndx[i] = 0;
@@ -271,7 +310,7 @@ public abstract class TermSpanIterator {
     * The end offset of the current span (exclusive), 
     * updated by a child's class {@link #nextSpanInternal()}. 
     */
-  protected int                        mCurrSpanEndOffset = -1;
+  protected int                        mCurrSpanEndOffset = 0;
   /** 
    * The start offset of the current span, 
    * updated by a child's class {@link #nextSpanInternal()}. 
@@ -282,7 +321,7 @@ public abstract class TermSpanIterator {
    * before resorting to binary search. This is used to find the next
    * element within a given span.
    */
-  protected static final int MIN_LINEAR_SEARCH_QTY = 0;
+  protected static final int MIN_LINEAR_SEARCH_QTY = 10;
   
 }
 

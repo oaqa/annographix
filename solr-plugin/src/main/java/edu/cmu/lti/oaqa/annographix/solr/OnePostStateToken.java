@@ -23,6 +23,8 @@ import java.io.IOException;
 
 import org.apache.lucene.index.DocsAndPositionsEnum;
 
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
+
 
 /**
  * This a helper class to read token info from posting lists.
@@ -33,12 +35,15 @@ import org.apache.lucene.index.DocsAndPositionsEnum;
 class OnePostStateToken extends OnePostStateBase {
 
   /**
+    * @param token       textual representation.
+    * @param type        posting type: annotation or regular token.
     * @param posting     an already initialized posting list.
     * @param connectQty  a number of postings connected with a given node/posting 
    *                     via a query graph.
     */
-  public OnePostStateToken(DocsAndPositionsEnum posting, int connectQty) {
-    super(posting, connectQty);
+  public OnePostStateToken(String token, FieldType type,
+                           DocsAndPositionsEnum posting, int connectQty) {
+    super(token, type, posting, connectQty);
   }
 
   /**

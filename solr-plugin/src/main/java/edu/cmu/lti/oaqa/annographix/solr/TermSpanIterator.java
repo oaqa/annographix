@@ -37,6 +37,9 @@ package edu.cmu.lti.oaqa.annographix.solr;
  *
  */
 public abstract class TermSpanIterator {  
+  /** a maximum number of forward iterations to carry out,
+      before starting a full-blown exponential search. */
+  private static final int FORWARD_ITER_QTY = 5;
   /**
    * This function initiates span iterators. It should be called after 
    * fetching the information for the next document. It assumes that each 
@@ -65,10 +68,9 @@ public abstract class TermSpanIterator {
         OnePostStateBase post = mPostSorted[k];
         int   elemQty = post.getQty();
         
-        int nextStartIdx = post.findElemIndexWithLargerOffset(
-                                                    mCurrSpanStartOffset - 1, 
-                                                    mStartElemIndx[k],
-                                                    MIN_LINEAR_SEARCH_QTY);
+        int nextStartIdx = post.findElemLargerOffset(FORWARD_ITER_QTY,
+                                                     mCurrSpanStartOffset - 1, 
+                                                     mStartElemIndx[k]);
         mStartElemIndx[k] = nextStartIdx;        
         
         if (nextStartIdx >= elemQty) {
@@ -103,9 +105,9 @@ public abstract class TermSpanIterator {
          *  or the value elemQty...
          */
         int nextEnd = 
-            post.findElemIndexWithLargerOffset(mCurrSpanEndOffset - 1,
-                                               mStartElemIndx[k] + 1,
-                                               MIN_LINEAR_SEARCH_QTY);
+            post.findElemLargerOffset(FORWARD_ITER_QTY,
+                                     mCurrSpanEndOffset - 1,
+                                     mStartElemIndx[k] + 1);
         /*
          *  If we subtract one from nextEnd, 
          *  we obtain the index of the LAST element 
@@ -316,12 +318,5 @@ public abstract class TermSpanIterator {
    * updated by a child's class {@link #nextSpanInternal()}. 
    */
   protected int                        mCurrSpanStartOffset = -1;
-  /**
-   * A number of linear (sequential) search iterations to carry out
-   * before resorting to binary search. This is used to find the next
-   * element within a given span.
-   */
-  protected static final int MIN_LINEAR_SEARCH_QTY = 10;
-  
 }
 

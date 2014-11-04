@@ -32,15 +32,17 @@ import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 /** 
  * This a base helper class to read annotation and token info from posting lists. 
  * This class should not be shared among threads, because it has thread-unsafe
- * function {@link #findElemIndexWithLargerOffset(int, int, int)}.
+ * function {@link #findElemLargerOffset(int, int, int)}. It is totally safe to use,
+ * though, as long as each thread creates <b>its own copy (or 
+ * multiple copies if needed) of the class</b> .
  * 
  * @author Leonid Boytsov
  *
  */
 public abstract class OnePostStateBase {
   public static int NO_MORE_DOCS = org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-  // TODO change to a larger value
-  protected static int INIT_SIZE = 1;
+  /** The initial size of the array containing matching entries inside a single document. */
+  protected static int INIT_SIZE_ELEM_INFO = 512; 
   
   /**
    * 
@@ -69,7 +71,7 @@ public abstract class OnePostStateBase {
     mFieldType = type;
     mPosting = posting;
     mConnectQty = connectQty;
-    extendElemInfo(INIT_SIZE);
+    extendElemInfo(INIT_SIZE_ELEM_INFO);
   }
   
   /**
@@ -106,25 +108,28 @@ public abstract class OnePostStateBase {
    * @return an internal element index
    */
   public int getCurrElemIndex() { return mCurrElemIndx; }
-  
+
   /**
-   * Find an element with an offset larger than the specified one. 
-   * First, it iterates linSearchIter over the array (i.e.,
-   * carries out a partial sequential search). 
-   * If the necessary element is still not found, it resorts to binary searching.
+   * Find an element with an offset larger than the specified one.  
    * 
    * <p>
    * This function assumes that elements are sorted by in the order of 
-   * non-decreasing offsets. It is not thread-safe, because it is
-   * reusing the search key (we don't want to allocate memory every
-   * time we call this function). 
+   * non-decreasing offsets. It relies on the efficient exponential search. 
    * </p> 
    *
-   * @param     offsetToExceed  find elements with offset greater than this value.
-   * @param     minIndx         search among elements with the index at least as
-   *                            larger as this index.
-   * @param     linSearchIter   carry out this number of iterations,
-   *                            before resorting to binary search.
+   * @param     sortedElemInfo    an array of elements sorted in the order of
+   *                              non-decreasing offsets.
+   * @param     sortedElemQty     an array may contain a large number of pre-allocated
+   *                              elements, however, we need to use only this
+   *                              number of elements.               
+   * @param     reusableOffComp   a reusable comparator object.                                     
+   * @param     reusableKey       a reusable key (we reuse the key to avoid an
+   *                              extra memory allocation).
+   * @param     linSearchIterQty  a maximum number of forward iterations to carry out,
+   *                              before starting a full-blown exponential search. 
+   * @param     offsetToExceed    find elements with offset greater than this value.
+   * @param     minIndx           search among elements with the index at least as
+   *                              larger as this index.
    *                            
    *  
    * @return    the index (>= minIndx) of the first element 
@@ -133,40 +138,109 @@ public abstract class OnePostStateBase {
    *             
    *  
    */
-  public int findElemIndexWithLargerOffset(int offsetToExceed, 
-                                           int minIndx,
-                                           int linSearchIter) {
-    
-    minIndx = Math.max(0, minIndx);
 
-   /*
-    * TODO : try to replace this procedure with the exponential search, 
-    *        it may be considerably faster in some cases. 
-    */
+  static public int findElemLargerOffset(
+                            ElemInfoData[]  sortedElemInfo,
+                            int             sortedElemQty,
+                            StartOffsetElemInfoDataComparator reusableOffComp,                                  
+                            ElemInfoData    reusableKey,
+                            int linSearchIterQty,
+                            int offsetToExceed, 
+                            int minIndx) {
+    minIndx = Math.max(0, minIndx);
     
     for (int i = 0; 
-        i < linSearchIter && minIndx < mQty; 
+        i < linSearchIterQty && minIndx < sortedElemQty; 
         ++i, ++minIndx) {
-      if (mSortedElemInfo[minIndx].mStartOffset > offsetToExceed) return minIndx;
-    }
-
-    if (minIndx >= mQty) return mQty;       
+      if (sortedElemInfo[minIndx].mStartOffset > offsetToExceed) return minIndx;
+    }   
     
-    mSearchKey.mStartOffset = offsetToExceed;
-    int res = Arrays.binarySearch(mSortedElemInfo, 
-                              minIndx, mQty,
-                              mSearchKey, mOffsetComp);
+    if (minIndx >= sortedElemQty) return sortedElemQty;
+    if (sortedElemInfo[minIndx].mStartOffset > offsetToExceed) return minIndx;
+    int d = 1;
+    int indx1 = minIndx, indx2 = -1;
+    /*
+     *  Loop invariant:
+     *      minIndx < indx1 < sortedElemQty && 
+     *      sortedElemInfo[indx1] <= offsetToExceed
+     */
+    while (true) {
+      indx2 = indx1 + d;
+      if (indx2 < sortedElemQty) {
+        if (sortedElemInfo[indx2].mStartOffset > offsetToExceed) {
+          break;
+        } else {
+          indx1 = indx2;
+        }
+      } else {
+        // sortedElemQty - 1 >= indx1 >= minIndx
+        if (sortedElemInfo[sortedElemQty - 1].mStartOffset <= offsetToExceed) {
+          return sortedElemQty;
+        }
+        /*
+         *  The last elements has the offset larger than the specified
+         *  function parameter. Yet, it may not be the first such offset.
+         *  Find the first one offset > offsetToExceed using the binary search.
+         */
+        indx2 = sortedElemQty;
+        break;
+      }
+      
+      d *= 2;
+    }
+    /*
+     * After exiting the loop it is guaranteed that:
+     * 1) sortedElemInfo[indx2].mStartOffset > offsetToExceed
+     * Due to loop invariant:
+     * 2) sortedElemInfo[indx1].mStartOffset <= offsetToExceed
+     * 3) minIndx < indx1 < sortedElemQty 
+     */
+    
+    reusableKey.mStartOffset = offsetToExceed;
+    // Search from indx1 inclusive to indx2 exclusive
+    int res = Arrays.binarySearch(sortedElemInfo, 
+                              indx1, indx2,
+                              reusableKey, 
+                              reusableOffComp);
     if (res >= 0) {
-      // Find the first element larger than res
-      while (res < mQty && 
-             mSortedElemInfo[res].mStartOffset == offsetToExceed)  {
+      /*
+       *  Find the first element larger than res
+       */
+      while (res < indx2 && 
+             sortedElemInfo[res].mStartOffset == offsetToExceed)  {
         ++res;
       }
     } else {
-      // found the first element with a larger offset
-      res =- res;
+      /*
+       *  found an order-preserving insertion point, which represents one
+       *  of the following:
+       *  1) End of the array
+       *  2) An index of an element larger than offsetToExceed  
+       */
+      res = -(res+1);
     }
-    return res;
+    return res;    
+  }
+  
+  /**
+   * Find an element with an offset larger than the specified one,
+   * see {@link #findElemLargerOffset(ElemInfoData[], int, StartOffsetElemInfoDataComparator, ElemInfoData, int, int, int)}.
+   *
+   * @param     linSearchIterQty  a maximum number of forward iterations to carry out,
+   *                              before starting a full-blown exponential search. 
+   * @param     offsetToExceed    find elements with offsets larger than this value.
+   * @param     minIndx           find elements with indices >= than this value.
+   * 
+   * @return                a minimum index of the element whose offset is
+   *                        larger than the specified parameter, or the
+   *                        number of elements, if no such element exists.
+   */
+  public int findElemLargerOffset(int linSearchIterQty,
+                                  int offsetToExceed, 
+                                  int minIndx) {
+    return findElemLargerOffset(mSortedElemInfo, mQty, 
+                                mOffsetComp, mSearchKey,
+                                linSearchIterQty, offsetToExceed, minIndx);
   }
   
   /**
@@ -344,7 +418,7 @@ public abstract class OnePostStateBase {
   protected int                     mCurrElemIndx=0;
   protected int                     mQty = 0;
   /** Elements are supposed to be started by offset. */
-  protected ElemInfoData            mSortedElemInfo[] = new ElemInfoData[0];
+  protected ElemInfoData[]          mSortedElemInfo = new ElemInfoData[0];
   protected ElemInfoData            mSearchKey = new ElemInfoData();
   protected StartOffsetElemInfoDataComparator   mOffsetComp = 
                                       new StartOffsetElemInfoDataComparator();

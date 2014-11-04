@@ -185,8 +185,11 @@ public abstract class OnePostStateBase {
         indx2 = sortedElemQty;
         break;
       }
-      
-      d *= 2;
+      int maxDiff = (sortedElemQty - indx1);
+      if (d <= (maxDiff >> 1))
+        d <<= 1;
+      else 
+        d = maxDiff;
     }
     /*
      * After exiting the loop it is guaranteed that:

@@ -416,18 +416,28 @@ public class StructQueryParse {
    *  unique IDs to connected subgraphs.
    */
   private void compConnectInfo() {
-    int compId = 0;
+    int compIdCounter = 0;
+    int connectQty[] = new int[mTokens.size()];
+    
     for (int i = 0; i < mTokens.size(); ++i) {
       if (!mEdges.get(i).isEmpty()) {
-        HashSet<Integer>  visited = new HashSet<Integer>();
-        if (!visited.contains(i)) {
-          doVisit(compId, i, visited);
-          mConnectQty.set(i, visited.size());
-          compId++;
+        int compId = mComponentId.get(i);
+        if (compId < 0) {
+          // Haven't computed connectedness and haven't assigned component id
+          HashSet<Integer>  visited = new HashSet<Integer>();
+          if (!visited.contains(i)) {
+            doVisit(compIdCounter, i, visited);
+            mConnectQty.set(i, visited.size());
+            connectQty[compIdCounter] = visited.size();
+            compIdCounter++;
+          }
+        } else {
+          // Connectedness is computed and component id is already assigned
+          mConnectQty.set(i, connectQty[compId]);
         }
       } else {
-        mComponentId.set(i, compId);
-        compId++;
+        mComponentId.set(i, compIdCounter);
+        compIdCounter++;
       }
     }
   }

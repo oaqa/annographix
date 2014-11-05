@@ -39,12 +39,12 @@ import java.util.Map;
 public class MappingReader {
   public class TypeDescr {
     public String fieldPrefix;
-    public String tag;
-    public String parent;
+    public String valueAttr;
+    public String parentAttr;
     public TypeDescr(String _fieldPrefix, String _tag, String _parent) {
       fieldPrefix = _fieldPrefix;
-      tag = _tag;
-      parent = _parent;
+      valueAttr = _tag;
+      parentAttr = _parent;
     }
   }
   
@@ -84,7 +84,7 @@ public class MappingReader {
       if (TYPE.equals(name)) {
         if (InRoot) {
           String type = attributes.getValue(NAME_ATTR);
-          String tag = attributes.getValue(VALUE_ATTR);
+          String valueAttr = attributes.getValue(VALUE_ATTR);
           if (type == null) {
             throw new SAXException("Missing attribute: '" + NAME_ATTR + "'");
           }
@@ -92,11 +92,11 @@ public class MappingReader {
           if (fieldPrefix == null) {
             throw new SAXException("Missing attribute: '" + FIELD_PREFIX + "'");
           }
-          String parent = attributes.getValue(PARENT_ATTR);
+          String parentAttr = attributes.getValue(PARENT_ATTR);
           if (mapping.containsKey(type)) {
             throw new SAXException("Duplicate type: '" + type + "'");
           } else {
-            mapping.put(type, holder.new TypeDescr(fieldPrefix, tag, parent));
+            mapping.put(type, holder.new TypeDescr(fieldPrefix, valueAttr, parentAttr));
           }
         } else {
           throw new SAXException("The root tag: '" + MAPPING + "' is missing");

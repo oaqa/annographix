@@ -192,8 +192,9 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
       
       MappingReader.TypeDescr desc = mMappingConfig.get(key);
       // 2. Check if the type attribute exists
-      String attr = desc.tag;
-      if (type.getFeatureByBaseName(attr)==null) {
+      String attr = desc.valueAttr;
+      if (attr != null // value attribute can be null
+          && type.getFeatureByBaseName(attr)==null) {
         throw new AnalysisEngineProcessException(
             new Exception(String.format(
                 "Annotation mapping file: attribute '%s' of the type type '%s' does not exist", 
@@ -202,7 +203,7 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
       }
       
       // 3. If we have a parent, let's check that the attribute also exists
-      if ((attr = desc.parent) !=  null)  {
+      if ((attr = desc.parentAttr) !=  null)  {
         if (type.getFeatureByBaseName(attr)==null) {
           throw new AnalysisEngineProcessException(
               new Exception(String.format(
@@ -310,15 +311,18 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
        while (iter.hasNext()) { 
          Annotation elem   = iter.next();
          
-         Feature feature = type.getFeatureByBaseName(desc.tag);
-         String  tagValue = elem.getFeatureValueAsString(feature);
+         String  tagValue = "";
+         if (desc.valueAttr != null) {
+           Feature feature = type.getFeatureByBaseName(desc.valueAttr);
+           tagValue = elem.getFeatureValueAsString(feature);
+         }
          
          int parentId = 0;
          
-         if (desc.parent != null) {
+         if (desc.parentAttr != null) {
            
            FeatureStructure parent = (Annotation) 
-                 elem.getFeatureValue(type.getFeatureByBaseName(desc.parent)); 
+                 elem.getFeatureValue(type.getFeatureByBaseName(desc.parentAttr)); 
                
            if (parent != null) parentId = annotIds.get((Annotation)parent);
          }

@@ -32,6 +32,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import edu.cmu.lti.oaqa.annographix.solr.UtilConst;
@@ -237,11 +238,12 @@ public class XmlHelper {
   public Document parseDocument(String docLine) 
       throws ParserConfigurationException, SAXException, IOException {
     DocumentBuilder dbld = mDocBuildFact.newDocumentBuilder();
-    // Should be 1.1, otherwise some symbols won't be recognized as valid
+
     String xml = String.format(
         "<?xml version=\"%s\"  encoding=\"%s\" ?>%s",
         UtilConst.XML_VERSION, UtilConst.ENCODING_NAME, docLine);
-    return dbld.parse(new ByteArrayInputStream(xml.getBytes(UtilConst.ENCODING_NAME)));
+   
+    return dbld.parse(new InputSource(new StringReader(xml)));
   }
  
 }

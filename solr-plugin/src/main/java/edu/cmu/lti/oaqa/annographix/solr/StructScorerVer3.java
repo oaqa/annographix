@@ -143,7 +143,7 @@ public class StructScorerVer3 extends Scorer {
     if (coverAnnotPost != null) {
       mCoverAnnotPost = 
         OnePostStateBase.createPost(coverAnnotPost,
-                                    "", // TODO ensure that it is always empty actually 
+                                    "", 
                                     FieldType.FIELD_ANNOTATION,
                                     0, 0, 0);
       allPostListUnsorted.add(mCoverAnnotPost);

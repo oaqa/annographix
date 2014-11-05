@@ -205,7 +205,10 @@ public class UtilConst {
 
   public static String combineFieldValue(String annotationType, 
                                          String annotationLabel) {
-    return annotationType + UtilConst.VALUE_SEPARATOR + annotationLabel; 
+    return annotationLabel == null || annotationLabel.isEmpty() ?
+        annotationType : 
+        annotationType + UtilConst.VALUE_SEPARATOR + annotationLabel
+           ;
   }
   /**
    * 

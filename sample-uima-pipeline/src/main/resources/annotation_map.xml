@@ -1,7 +1,8 @@
 <annotationMapping>
-  <type name="edu.cmu.lti.oaqa.annographix.types.POS"            fieldPrefix="POS"         valueAttr="Tag"/> 
-  <type name="edu.cmu.lti.oaqa.annographix.types.NamedEntity"    fieldPrefix="NamedEntity" valueAttr="EntityType" parentAttr="Parent"/> 
-  <type name="edu.cmu.lti.oaqa.annographix.types.Chunk"          fieldPrefix="Chunk"       valueAttr="ChunkType"/> 
-  <type name="edu.cmu.lti.oaqa.annographix.types.SemanticRole"   fieldPrefix="SRL"         valueAttr="Label" parentAttr="Parent"/> 
-  <type name="edu.cmu.lti.oaqa.annographix.types.DependencyElem" fieldPrefix="Dependency" valueAttr="DepType" parentAttr="Parent"/> 
+  <type name="edu.cmu.lti.oaqa.annographix.types.Sentence"       fieldPrefix="Sentence"   />
+  <type name="edu.cmu.lti.oaqa.annographix.types.Paragraph"      fieldPrefix="Paragraph"   />
+  <type name="edu.cmu.lti.oaqa.annographix.types.POS"            fieldPrefix="POS"         valueAttr="Tag"/>
+  <type name="edu.cmu.lti.oaqa.annographix.types.NamedEntity"    fieldPrefix="NamedEntity" valueAttr="EntityType" parentAttr="Parent"/>
+  <type name="edu.cmu.lti.oaqa.annographix.types.SemanticRole"   fieldPrefix="SRL"         valueAttr="Label" parentAttr="Parent"/>
+  <type name="edu.cmu.lti.oaqa.annographix.types.DependencyElem" fieldPrefix="Dependency" valueAttr="DepType" parentAttr="Parent"/>
 </annotationMapping>

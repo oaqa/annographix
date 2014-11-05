@@ -13,15 +13,22 @@
 
 	<dependencies>
     <!-- annographix, should include necessary UIMA and SOLR dependencies  -->
-    <dependency>
-      <groupId>edu.cmu.lti.oaqa.annographix</groupId>
-      <artifactId>solr-plugin</artifactId>
-      <version>3.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>edu.cmu.lti.oaqa.annographix</groupId>
-      <artifactId>solr-apps</artifactId>
-      <version>3.0-SNAPSHOT</version>
-    </dependency>
+        <dependency>
+          <groupId>edu.cmu.lti.oaqa.annographix</groupId>
+          <artifactId>solr-plugin</artifactId>
+          <version>3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+          <groupId>edu.cmu.lti.oaqa.annographix</groupId>
+          <artifactId>solr-apps</artifactId>
+          <version>3.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- some Apache commons -->
+        <dependency>
+          <groupId>commons-configuration</groupId>
+          <artifactId>commons-configuration</artifactId>
+          <version>1.6</version>
+        </dependency>
 	</dependencies>
 </project>

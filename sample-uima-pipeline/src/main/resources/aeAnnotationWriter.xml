@@ -30,20 +30,6 @@
         <mandatory>true</mandatory>
       </configurationParameter>
       <configurationParameter>
-        <name>docinfo_type</name>
-        <description>A name of the UIMA type that keeps document related information.</description>
-        <type>String</type>
-        <multiValued>false</multiValued>
-        <mandatory>true</mandatory>
-      </configurationParameter>
-      <configurationParameter>
-        <name>docno_getter</name>
-        <description>A parameter to specify a getter function for the document-number/id attribute.</description>
-        <type>String</type>
-        <multiValued>false</multiValued>
-        <mandatory>true</mandatory>
-      </configurationParameter>
-      <configurationParameter>
         <name>out_text_file</name>
         <description>name of the output text file in Indri TRECTEXT format.</description>
         <type>String</type>
@@ -82,18 +68,6 @@
         <name>annot_field</name>
         <value>
           <string>annot</string>
-        </value>
-      </nameValuePair>
-      <nameValuePair>
-        <name>docinfo_type</name>
-        <value>
-          <string>edu.cmu.lti.oaqa.annographix.types.DocumentInfo</string>
-         </value>
-      </nameValuePair>
-      <nameValuePair>
-        <name>docno_getter</name>
-        <value>
-          <string>getDocNo</string>
         </value>
       </nameValuePair>
       <nameValuePair>

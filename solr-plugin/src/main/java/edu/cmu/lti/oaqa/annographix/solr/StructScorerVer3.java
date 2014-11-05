@@ -57,7 +57,7 @@ public class StructScorerVer3 extends Scorer {
    */
   private OnePostStateBase[] mAllPostsSortedByCost;
   /**
-   * Token/annotation only postings sorted first in the order of decreasing
+   * Text/annotation only postings sorted first in the order of decreasing
    * connectedness, then in the order of increasing posting cost.
    */
   private OnePostStateBase[] mPostSortedByConnectCost;
@@ -117,20 +117,35 @@ public class StructScorerVer3 extends Scorer {
     ArrayList<OnePostStateBase> allPostListUnsorted 
                                             = new ArrayList<OnePostStateBase>();
 
-    for(int i = 0; i < tokQty; ++i) { 
-      allPostListUnsorted.add(
-          OnePostStateBase.createPost(postings[i], 
-                                      queryParse.getTokens().get(i),
-                                      queryParse.getTypes().get(i),
-                                      queryParse.getConnectQty(i))
-      );
+    if (tokQty > 0) {
+      long minPostCompCost[] = new long[tokQty];
+      for (int i = 0; i < tokQty; ++i) {
+        minPostCompCost[i] = Long.MAX_VALUE;
+      }
+      for (int i = 0; i < tokQty; ++i) { 
+        int compId = queryParse.getComponentId(i);
+        minPostCompCost[compId] = Math.min(minPostCompCost[compId], 
+                                           postings[i].cost());
+      }
+      
+      for (int i = 0; i < tokQty; ++i) { 
+        int compId = queryParse.getComponentId(i);
+        allPostListUnsorted.add(
+            OnePostStateBase.createPost(postings[i], 
+                                        queryParse.getTokens().get(i),
+                                        queryParse.getTypes().get(i),
+                                        queryParse.getConnectQty(i),
+                                        minPostCompCost[compId],
+                                        compId)
+        );
+      }
     }
     if (coverAnnotPost != null) {
       mCoverAnnotPost = 
         OnePostStateBase.createPost(coverAnnotPost,
                                     "", // TODO ensure that it is always empty actually 
                                     FieldType.FIELD_ANNOTATION,
-                                    0);
+                                    0, 0, 0);
       allPostListUnsorted.add(mCoverAnnotPost);
     }
     mAllPostsSortedByCost = new OnePostStateBase[allPostListUnsorted.size()];
@@ -307,10 +322,8 @@ public class StructScorerVer3 extends Scorer {
   }
   
   /**
-   * A comparator class that helps sort postings in the order of increasing cost.
+   * A comparator class to sort postings in the order of increasing cost.
    * 
-   * @author Leonid Boytsov
-   *
    */
   class SortPostByCost implements Comparator<OnePostStateBase> {
 
@@ -322,13 +335,25 @@ public class StructScorerVer3 extends Scorer {
   }
 
   /**
-   * A comparator class that helps sort postings first in the order of
-   * decreasing connectedness, and next in the order 
+   * A comparator class to sort postings by several attributes:
+   * <ul>
+   * <li>A number of postings/nodes it is connected with -- decreasing.
+   * <li>A minimum cost of postings among connected nodes -- increasing.
+   * <li>A component ID -- increasing.
+   * <li>A posting cost -- increasing.
+   * </ul>
+   * 
+   * <p>It is not hard to see that connected postings will always be 
+   * adjacent. Better connected components are prioritized, as well as
+   * components with the smallest minimum posting cost. Inside a single
+   * component, a posting with lower score is prioritized.</p>
+   *
    */
   class SortPostByConnectQtyAndCost implements Comparator<OnePostStateBase> {
 
     @Override
     public int compare(OnePostStateBase o1, OnePostStateBase o2) {
+      // 1. By connectedness -- decreasing.
       if (o1.getConnectQty() != o2.getConnectQty()) {
       /*
        *  if the first element has more connections, we return a value < 0, 
@@ -336,9 +361,25 @@ public class StructScorerVer3 extends Scorer {
        *  number of connections.
        */
         return o2.getConnectQty() - o1.getConnectQty();
-      }    
+      }
+      /*
+       * 2. By minimum posting cost inside the component, increasing.
+       * Note that for connected postings (i.e., the component IDs are
+       * equal) this minimum posting cost is the same....
+       */
       
-      long d = o1.getPostCost() - o2.getPostCost();
+      long d = o1.getMinCompPostCost() - o2.getMinCompPostCost();
+      if (d != 0)
+        return d < 0 ? -1 : 1;
+      /*
+       * ... to make connected postings all go together, among postings
+       * with the same minimum posting cost, we sort by component id.
+       */
+      if (o1.getComponentId() != o2.getComponentId())
+        return o1.getComponentId() - o2.getComponentId();
+        
+      // 4. Finally simply compare the cost (for connected nodes). 
+      d = o1.getPostCost() - o2.getPostCost();
       return d == 0 ? 0 : (d < 0 ? -1 : 1);    
     }  
     

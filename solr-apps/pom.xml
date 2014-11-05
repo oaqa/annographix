@@ -37,11 +37,13 @@
           <artifactId>uimaj-core</artifactId>
           <version>2.4.0</version>
         </dependency>
+        <!-- don't need it for now
         <dependency>
 		      <groupId>org.apache.uima</groupId>
 		      <artifactId>uimafit-core</artifactId>
 		      <version>2.1.0</version>
         </dependency> 
+        -->
 
         <!-- Solr dependencies -->
 

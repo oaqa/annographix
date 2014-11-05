@@ -15,10 +15,7 @@
  */
 package edu.cmu.lti.oaqa.annographix.util;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,7 +32,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import edu.cmu.lti.oaqa.annographix.solr.UtilConst;
@@ -73,7 +69,7 @@ public class XmlHelper {
     for (int x = 0; x < childNodes.getLength(); x++ ) {
         Node data = childNodes.item(x);
         if ( data.getNodeType() == Node.TEXT_NODE )
-            return data.getNodeValue();
+            return data.getTextContent();
     }
     return "";
   }
@@ -82,9 +78,8 @@ public class XmlHelper {
   
   public XmlHelper() {
     mDocBuildFact = DocumentBuilderFactory.newInstance();
-    mDocBuildFact.setNamespaceAware(false); // no namespaces in our XML configs
+    mDocBuildFact.setNamespaceAware(false); // no namespaces in our XMLs
     mDocBuildFact.setValidating(false);
-
   }
   
   public String genXMLIndexEntry(Map <String,String> fields) 
@@ -242,12 +237,11 @@ public class XmlHelper {
   public Document parseDocument(String docLine) 
       throws ParserConfigurationException, SAXException, IOException {
     DocumentBuilder dbld = mDocBuildFact.newDocumentBuilder();
-    return dbld.parse(new InputSource(
-    new StringReader(
-        // Should be 1.1, otherwise some symbols won't be recognized as valid
-        "<?xml version=\"1.1\"  encoding=\"UTF-8\"?>" + docLine
-        )));
-
+    // Should be 1.1, otherwise some symbols won't be recognized as valid
+    String xml = String.format(
+        "<?xml version=\"%s\"  encoding=\"%s\" ?>%s",
+        UtilConst.XML_VERSION, UtilConst.ENCODING_NAME, docLine);
+    return dbld.parse(new ByteArrayInputStream(xml.getBytes(UtilConst.ENCODING_NAME)));
   }
  
 }

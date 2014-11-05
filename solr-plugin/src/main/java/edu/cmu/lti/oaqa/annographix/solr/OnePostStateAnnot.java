@@ -28,7 +28,9 @@ import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 
 
 /**
- * This a helper class to read annotation info from posting lists' payloads.
+ * This a helper class to read annotation posting lists. These lists 
+ * are special, because all the important data is stored in the form
+ * of payloads.
  * 
  * @author Leonid boytsov
  *
@@ -41,10 +43,17 @@ class OnePostStateAnnot extends OnePostStateBase {
    * @param posting     an already initialized posting list.
    * @param connectQty  a number of postings connected with a given node/posting 
    *                    via a query graph.
+   * @param minCompPostCost a minimum cost among postings associated with the subset
+   *                    of nodes connected to this posting.
+   * @param componentId a unique ID associated with the subset of nodes that
+   *                    are connected to this one.
    */
   public OnePostStateAnnot(String token, FieldType type,
-                           DocsAndPositionsEnum posting, int connectQty) {
-    super(token, type, posting, connectQty);
+                           DocsAndPositionsEnum posting, 
+                           int connectQty,
+                           long minCompPostCost,
+                           int componentId) {
+    super(token, type, posting, connectQty, minCompPostCost, componentId);
   }
 
   /**

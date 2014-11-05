@@ -196,9 +196,9 @@ public class StructQueryVer3 extends Query {
      * 
      * {@link #getValueForNormalization()} and {@link #normalize(float, float)}
      * are implemented similarly to  
-     * {@link org.apache.lucene.search.PhraseWeight#getValueForNormalization()}
+     * {@link org.apache.lucene.search.PhraseQuery.PhraseWeight#getValueForNormalization()}
      * and 
-     * {@link org.apache.lucene.search.PhraseWeight#normalize(float, float)}.
+     * {@link org.apache.lucene.search.PhraseQuery.PhraseWeight#normalize(float, float)}.
      * 
      */
     @Override

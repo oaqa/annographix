@@ -142,17 +142,5 @@
         </featureDescription>
       </features>  
     </typeDescription>
-  <typeDescription>
-      <name>edu.cmu.lti.oaqa.annographix.types.DocumentInfo</name>
-      <description>Document information</description>
-      <supertypeName>uima.tcas.Annotation</supertypeName>
-      <features>
-        <featureDescription>
-          <name>DocNo</name>
-          <description>Document id/number.</description>
-          <rangeTypeName>uima.cas.String</rangeTypeName>
-        </featureDescription>
-      </features>
-    </typeDescription>
   </types>    
 </typeSystemDescription>

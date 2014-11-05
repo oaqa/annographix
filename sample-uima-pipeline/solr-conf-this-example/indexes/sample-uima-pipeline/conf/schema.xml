@@ -20,7 +20,7 @@
         -->
         <tokenizer class="solr.WhitespaceTokenizerFactory"/>
         <filter class="solr.DelimitedPayloadTokenFilterFactory" 
-          delimiter="|" encoder="edu.cmu.lti.oaqa.annographix.solr.AnnotEncoder"/>
+          delimiter="|" encoder="edu.cmu.lti.oaqa.annographix.solr.AnnotEncoderVer3"/>
       </analyzer>
     </fieldtype>
 

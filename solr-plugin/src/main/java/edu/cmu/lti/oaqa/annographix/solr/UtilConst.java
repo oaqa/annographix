@@ -27,6 +27,11 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
  *
  */
 public class UtilConst {
+  public static final String ENCODING_NAME = "UTF-8";
+  /**
+   * An XML version, must be 1.0.
+   */
+  public static final String XML_VERSION = "1.0";
   /**
    *   A version of Lucene/SOLR library to use.
    */

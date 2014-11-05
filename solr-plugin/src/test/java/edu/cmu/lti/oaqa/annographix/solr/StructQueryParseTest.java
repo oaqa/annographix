@@ -41,10 +41,12 @@ public class StructQueryParseTest {
       String constrType_[] = {"","","",""};
       String dependId_[]   = {"","","",""}; 
       int    connectQty_[] = {0, 0, 0, 0};
+      int    componentId_[] = {0, 1, 2, 3};
       
       StructQueryParse p = new StructQueryParse(query);
       
-      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, connectQty_));
+      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, 
+                             connectQty_, componentId_));
     } catch (Exception e) {
       e.printStackTrace();
       fail("Exception occurred.");      
@@ -94,10 +96,12 @@ public class StructQueryParseTest {
       String dependId_[]   = {"1","2","",
                               "4", "5", ""}; 
       int    connectQty_[] = {3, 3, 3, 3, 3, 3};
+      int    componentId_[] = {0, 0, 0, 1, 1, 1}; 
       
       StructQueryParse p = new StructQueryParse(query);
       
-      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, connectQty_));
+      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, 
+                             connectQty_, componentId_));
     } catch (Exception e) {
       e.printStackTrace();
       fail("Exception occurred.");      
@@ -176,10 +180,12 @@ public class StructQueryParseTest {
       String dependId_[]   = {"1","2","0",
                               "", "5", "4"}; 
       int    connectQty_[] = {3, 3, 3, 0, 2, 2};
+      int    componentId_[] = {0, 0, 0, 1, 2, 2};
       
       StructQueryParse p = new StructQueryParse(query);
       
-      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, connectQty_));
+      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, 
+                             connectQty_, componentId_));
     } catch (Exception e) {
       e.printStackTrace();
       fail("Exception occurred.");      
@@ -246,10 +252,12 @@ public class StructQueryParseTest {
                               "2,3,4,5" // SRL_AM-LOC
                              }; 
       int    connectQty_[] = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10}; 
+      int    componentId_[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
       
       StructQueryParse p = new StructQueryParse(query);
       
-      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, connectQty_));
+      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, 
+                            connectQty_, componentId_));
     } catch (Exception e) {
       e.printStackTrace();
       fail("Exception occurred.");      

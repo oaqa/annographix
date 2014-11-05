@@ -27,23 +27,31 @@ import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 
 
 /**
- * This a helper class to read token info from posting lists.
+ * This a helper class to read from a text-field posting list (as
+ * opposed to reading an annotation posting list).
  * 
  * @author Leonid boytsov
  *
  */
-class OnePostStateToken extends OnePostStateBase {
+class OnePostStateText extends OnePostStateBase {
 
   /**
     * @param token       textual representation.
     * @param type        posting type: annotation or regular token.
     * @param posting     an already initialized posting list.
     * @param connectQty  a number of postings connected with a given node/posting 
-   *                     via a query graph.
+    *                     via a query graph.
+    * @param minCompPostCost a minimum cost among postings associated with the subset
+    *                    of nodes connected to this posting.
+    * @param componentId a unique ID associated with the subset of nodes that
+    *                    are connected to this one.
     */
-  public OnePostStateToken(String token, FieldType type,
-                           DocsAndPositionsEnum posting, int connectQty) {
-    super(token, type, posting, connectQty);
+  public OnePostStateText(String token, FieldType type,
+                           DocsAndPositionsEnum posting, 
+                           int connectQty,
+                           long minCompPostCost,
+                           int componentId) {
+    super(token, type, posting, connectQty, minCompPostCost, componentId);
   }
 
   /**

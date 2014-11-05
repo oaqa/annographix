@@ -86,11 +86,11 @@ public class FindElemLargerOffsetTest {
   @Test
   public void testLarge() {
     try {
-      int offsets[] = new int[1024*8];
+      int offsets[] = new int[4096];
       for (int i = 0; i < offsets.length; ++i) offsets[i] = 2*i;
       
-      for (int k = 0; k < 5; ++k)
-        genericTest(1024, k, offsets);
+      for (int k = 0; k < 3; ++k)
+        genericTest(121, k, offsets);
     } catch (Exception e) {
       e.printStackTrace();
       fail("Exception occurred.");      

@@ -18,9 +18,7 @@ package edu.cmu.lti.oaqa.annographix.uima;
 
 import java.io.*;
 import java.util.*;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -33,7 +31,8 @@ import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.cas.*;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.apache.uima.util.Level;
-import org.apache.uima.fit.util.JCasUtil;
+
+import org.apache.commons.io.FileUtils;
 
 import edu.cmu.lti.oaqa.annographix.solr.UtilConst;
 import edu.cmu.lti.oaqa.annographix.util.CompressUtils;
@@ -88,32 +87,6 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
    * also specifies which parent-child links should be memorized. 
    */
   public static final String PARAM_MAPPING_FILE = "mapping_file";
-  /**
-   *  A parameter to specify a UIMA type that keeps document-related 
-   *  information such as the document ID. 
-   */
-  public static final String PARAM_DOC_INFO_TYPE = "docinfo_type";
-  /**
-   * A parameter to specify the getter function for the  document-number/id 
-   * attribute name. The UIMA type given by the parameter PARAM_DOC_INFO_TYPE 
-   * should  have this getter. It seems that the name of the function is 
-   * made as follows : get + attribute name with first letter uppercased.
-   * However, Leo is not 100% sure and, therefore, asks you to provide
-   * an exact name of the getter function.
-   *  
-   */
-  public static final String PARAM_DOCNO_GETTER = "docno_getter";
-                          
-  /** A name of the UIMA type that keeps document related information */
-  private String mDocInfoType;
-  /** A note of the attribute to store a unique document ID. */
-  private String mDocNoGetter;
-  
-  /** a class of the type mDocInfoType */
-  private Class<? extends Annotation>  mDocInfoTypeClass;
-  /** a method to obtain the document number */
-  private Method                       mGetDoNoMethod;
- 
 
   /** Result of parsing the annotation mapping file. */
   private Map<String, MappingReader.TypeDescr> mMappingConfig;
@@ -157,7 +130,13 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
      */
     mViewName = 
           (String) context.getConfigParameterValue(UtilConst.CONFIG_VIEW_NAME);
-        
+ 
+    if (mViewName == null)
+      throw new ResourceInitializationException(
+                    new Exception("Missing parameter: " + 
+                                  UtilConst.CONFIG_VIEW_NAME));   
+     
+    
     mTextFieldName = (String) 
               context.getConfigParameterValue(UtilConst.CONFIG_TEXT4ANNOT_FIELD);
     
@@ -166,43 +145,6 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
                     new Exception("Missing parameter: " + 
                                   UtilConst.CONFIG_TEXT4ANNOT_FIELD));   
     
-    mDocInfoType = 
-        (String) context.getConfigParameterValue(PARAM_DOC_INFO_TYPE);
-    
-    if (mDocInfoType == null)
-      throw new ResourceInitializationException(
-          new Exception("Missing parameter: " + PARAM_DOC_INFO_TYPE));
-
-    
-    try {
-      mDocInfoTypeClass = Class.forName(mDocInfoType).asSubclass(Annotation.class);
-    } catch (ClassNotFoundException e) {
-      throw new ResourceInitializationException(
-          new Exception("Type: '" + mDocInfoType + "' doesn't exist!"));
-    }
-    
-    mDocNoGetter = 
-        (String) context.getConfigParameterValue(PARAM_DOCNO_GETTER);
-    
-    if (mDocNoGetter == null)
-      throw new ResourceInitializationException(
-          new Exception("Missing parameter: " + PARAM_DOCNO_GETTER));
-    
-    Exception eMemorize = null;
-    try {
-      mGetDoNoMethod = mDocInfoTypeClass.getMethod(mDocNoGetter);
-    } catch (NoSuchMethodException e1) {
-      eMemorize = e1;
-    } catch (SecurityException e1) {
-      eMemorize = e1;
-    }
-    if (eMemorize != null) {
-      throw new ResourceInitializationException(
-          new Exception(String.format(          
-                                  "Cannot obtain attribute-reading function, " +
-                                  "type: '%s', attribute '%s', exception '%s'",
-                                  mDocInfoType, mDocNoGetter, eMemorize.toString()))); 
-    }
     
     FilePair pTxt = InitOutFile(context, "out_text_file");
 
@@ -285,80 +227,46 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
         throw new AnalysisEngineProcessException(e);
     }
         
-    String docId = null;
-
-
     XmlHelper xmlHlp = new XmlHelper();
 
     try {      
-      JCas viewJCas = mViewName != null ? jcas.getView(mViewName) : jcas;
-      
-      FSIterator<Annotation> it = (FSIterator<Annotation>) 
-                                JCasUtil.iterator(viewJCas, mDocInfoTypeClass);
-      
-      if (it.hasNext()) {
-        Exception eMemorize = null;
-        Annotation docInfo = it.next();
-        try {
-          docId = (String) mGetDoNoMethod.invoke(docInfo);
-        } catch (IllegalAccessException e1) {
-          eMemorize = e1;
-        } catch (IllegalArgumentException e1) {
-          eMemorize = e1;
-        } catch (InvocationTargetException e1) {
-          eMemorize = e1;
-        }
-        if (eMemorize != null) {
-          throw new AnalysisEngineProcessException(
-                      new Exception(
-                            String.format("Cannot obtain document identifier from " +
-                                          " the annotation, type '%s' " +
-                                          " document number/id attribute '%s'",
-                                          mDocInfoType, mDocNoGetter)));    
-        }
-      } else {
-        throw new AnalysisEngineProcessException(new 
-            Exception("Missing annotation of the type: '" + mDocInfoType + "'"));
-      }
-      
-      if (it.hasNext()) {
-        throw new AnalysisEngineProcessException(new 
-            Exception("More than one annotation of the type: '" + mDocInfoType + "'"));
-      }      
+      // mViewName != null
+      JCas viewJCas = jcas.getView(mViewName);
 
+      
+      
       /*
        *  Let's make a sanity check here, even though it's a bit expensive:
        *  The text in the view should match the text in the annotation field.
        */
       String docText = aCAS.getDocumentText();
       Map<String, String> docFields = xmlHlp.parseXMLIndexEntry(docText);
+      
+      String docNo = docFields.get(UtilConst.INDEX_DOCNO);
+      if (docNo == null) {
+        throw new Exception("Missing field: " + UtilConst.INDEX_DOCNO);
+      }            
+      
       String annotText = docFields.get(mTextFieldName);
       
       if (annotText == null) {
         throw new Exception("Missing field: " + mTextFieldName + 
-                            " docId: " + docId);
+                            " docNo: " + docNo);
       }
       String jcasText = viewJCas.getDocumentText();
-      if (!annotText.equals(jcasText)) {
-        System.err.println("Annotation (jcasView) text:");
-        System.err.println(jcasText);
-        System.err.println("====================================");
-        System.err.println("Document text:");
-        System.err.println(annotText);
-        System.err.println("====================================");
+      
+      if (annotText.compareTo(jcasText) != 0) {
+        FileUtils.writeStringToFile(new File("cas.txt"), docText, null);
+        FileUtils.writeStringToFile(new File("jcasview.txt"), jcasText, null);
+        FileUtils.writeStringToFile(new File("annot.txt"), annotText, null);    
 
-        throw new Exception(String.format("Non-matching annotation texts for docId: %d " + docId + 
-                            " view name: %s " + 
-                            "text length: %d jcasView text length: %d ", docId, mViewName,  
-                                          annotText.length(), jcasText.length()));        
+        throw new Exception(String.format(
+                    "Non-matching annotation texts for docNo: %s " + 
+                    " view name: %s " + 
+                    "text length: %d jcasView text length: %d ", 
+                    docNo, mViewName, annotText.length(), jcasText.length()));        
       }
-      
-      String docNo = docFields.get(UtilConst.INDEX_DOCNO);
-      if (docNo == null) {
-        throw new Exception("Missing field: " + UtilConst.INDEX_DOCNO + 
-                          " docId: " + docId);
-      }
-      
+
       writeText(docText);
       writeAnnotations(docNo, viewJCas);
     } catch (Exception e) {

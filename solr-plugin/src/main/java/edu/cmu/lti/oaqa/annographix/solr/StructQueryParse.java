@@ -63,6 +63,14 @@ public class StructQueryParse {
     return mConnectQty.get(index);
   }
 
+  /**
+   * @param     index       a token/annotation index.
+   * @param     componentId a unique ID associated with the subset of nodes that
+   *                        are connected to this one.
+   */
+  public int getComponentId(int index) {
+    return mComponentId.get(index);
+  }  
 
   /**
    * @param     index   a token/annotation index.
@@ -136,9 +144,10 @@ public class StructQueryParse {
     
     /*
      *  Finally, let's compute a number of edges with which 
-     *  each node is connected via the query graph.
+     *  each node is connected via the query graph and assign
+     *  unique IDs to connected subgraphs.
      */
-    compConnectQty();
+    compConnectInfo();
      
   }
 
@@ -155,8 +164,10 @@ public class StructQueryParse {
    * @param dependId_           dependent ids for constrained/child elements,
    *                            each array element is a string with comma separated
    *                            dependency ids. 
-   * @param connectQty_         connectedness number array (a numbers of postings 
+   * @param connectQty_         array of "connectedness" values (numbers of postings 
    *                            connected with a given node/posting via a query graph).
+   * @param componentId_        array of component IDs: each subset of connected
+   *                            nodes gets a unique ID.
    * 
    * @return true if provided parameters match an internal representation of
    *         a parsed query.
@@ -167,7 +178,8 @@ public class StructQueryParse {
                     String types_[],
                     String constrType_[],
                     String dependId_[],
-                    int    connectQty_[]) throws Exception {
+                    int    connectQty_[],
+                    int    componentId_[]) throws Exception {
     int N = tokens_.length;
     
     ArrayList<String>                     tokens = new ArrayList<String>();
@@ -178,6 +190,7 @@ public class StructQueryParse {
     ArrayList<ArrayList<Integer>>         dependId
                                               = new ArrayList<ArrayList<Integer>>();
     ArrayList<Integer>                    connectQty = new ArrayList<Integer>();
+    ArrayList<Integer>                    componentId = new ArrayList<Integer>();
     
     if (labels_.length != N) throw new Exception(
                         String.format("labels len (%d) != tokens len (%d), args))", 
@@ -194,6 +207,9 @@ public class StructQueryParse {
     if (connectQty_.length != N) throw new Exception(
         String.format("labels len (%d) != connectQty len (%d), args))", 
                       N, connectQty_.length));
+    if (componentId_.length != N) throw new Exception(
+        String.format("labels len (%d) != componentId len (%d), args))", 
+                      N, componentId_.length));    
     
     for (int i = 0; i < N; ++i) {
       tokens.add(tokens_[i]);
@@ -230,6 +246,7 @@ public class StructQueryParse {
     boolean bConstrType = DeepEquals.deepEquals(mConstrType, constrType);
     boolean bDependId   = DeepEquals.deepEquals(mDependId, dependId);
     boolean bConnectQty = DeepEquals.deepEquals(mConnectQty, connectQty);
+    boolean bComponentId= DeepEquals.deepEquals(mComponentId, componentId);
     boolean bFinal      = bTokens && bLabels && bTypes && 
                           bConstrType && bDependId && bConnectQty;
     if (!bFinal) {
@@ -239,8 +256,10 @@ public class StructQueryParse {
                         "  Types       : %b \n" + 
                         "  ConstrType  : %b \n" + 
                         "  DependId    : %b \n" + 
-                        "  ConnectQty  : %b \n",
-                  bTokens, bLabels, bTypes, bConstrType, bDependId, bConnectQty
+                        "  ConnectQty  : %b \n" +
+                        "  ComponentId : %b \n",
+                  bTokens, bLabels, bTypes, bConstrType, bDependId, 
+                  bConnectQty, bComponentId
                         ));
     }
     
@@ -306,6 +325,7 @@ public class StructQueryParse {
     mLabels.add(e.mLabel);
     mTypes.add(type);
     mConnectQty.add(0);
+    mComponentId.add(-1);
     mConstrType.add(new ArrayList<ConstraintType>());
     mDependId.add(new ArrayList<Integer>());
   }
@@ -392,24 +412,33 @@ public class StructQueryParse {
   }
   
   /**
-   * Compute a number of edges each node is connected with in an query graph.
+   * Compute a number of edges each node is connected with in an query graph and assign
+   *  unique IDs to connected subgraphs.
    */
-  private void compConnectQty() {
+  private void compConnectInfo() {
+    int compId = 0;
     for (int i = 0; i < mTokens.size(); ++i) {
       if (!mEdges.get(i).isEmpty()) {
         HashSet<Integer>  visited = new HashSet<Integer>();
-        doVisit(i, visited);
-        mConnectQty.set(i, visited.size());
+        if (!visited.contains(i)) {
+          doVisit(compId, i, visited);
+          mConnectQty.set(i, visited.size());
+          compId++;
+        }
+      } else {
+        mComponentId.set(i, compId);
+        compId++;
       }
     }
   }
   
-  private void doVisit(int edgeId, HashSet<Integer> visited) {
-    if (visited.contains(edgeId)) return; // never visit twice
-    visited.add(edgeId);
-    ArrayList<Integer> edgeList = mEdges.get(edgeId);
+  private void doVisit(int compId, int nodeId, HashSet<Integer> visited) {
+    if (visited.contains(nodeId)) return; // never visit twice
+    visited.add(nodeId);
+    mComponentId.set(nodeId, compId);
+    ArrayList<Integer> edgeList = mEdges.get(nodeId);
     for (int i = 0; i < edgeList.size(); ++i)
-      doVisit(edgeList.get(i), visited);
+      doVisit(compId, edgeList.get(i), visited);
   }
 
   private ArrayList<String>                         mTokens = 
@@ -423,6 +452,7 @@ public class StructQueryParse {
   private ArrayList<ArrayList<Integer>>             mDependId = 
                                       new ArrayList<ArrayList<Integer>>();
   private ArrayList<Integer>                        mConnectQty = new ArrayList<Integer>();
+  private ArrayList<Integer>                        mComponentId = new ArrayList<Integer>();
   private HashMap<String, Integer>                  mLabel2Id = new HashMap<String, Integer>();
 
   private HashMap<Integer, ArrayList<Integer>>      mEdges = 

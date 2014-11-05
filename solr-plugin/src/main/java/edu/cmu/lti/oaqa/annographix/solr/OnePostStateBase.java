@@ -53,24 +53,37 @@ public abstract class OnePostStateBase {
    * @param type        posting type: annotation or regular token.
    * @param connectQty  number of postings connected with a given node/posting 
    *                    via a query graph.
+   * @param minCompPostCost a minimum cost among postings associated with the subset
+   *                    of nodes connected to this posting.
+   * @param componentId a unique ID associated with the subset of nodes associated 
+   *                    with the subset of nodes connected to this posting.
    * 
    * @return            reference to the newly created object
    */
   public static OnePostStateBase createPost(DocsAndPositionsEnum posting, 
                                             String    token,
                                             FieldType type,
-                                            int connectQty) {
+                                            int connectQty,
+                                            long minCompPostCost,
+                                            int componentId) {
     return type == FieldType.FIELD_ANNOTATION ? 
-                      new OnePostStateAnnot(token, type, posting, connectQty):
-                      new OnePostStateToken(token, type, posting, connectQty);
+                      new OnePostStateAnnot(token, type, posting, 
+                                            connectQty, minCompPostCost, componentId):
+                      new OnePostStateText(token, type, posting, 
+                                            connectQty, minCompPostCost, componentId);
   }
   
   public OnePostStateBase(String token, FieldType type,
-                          DocsAndPositionsEnum posting, int connectQty) {
+                          DocsAndPositionsEnum posting, 
+                          int connectQty,
+                          long minCompPostCost,
+                          int componentId) {
     mToken  = token;
     mFieldType = type;
     mPosting = posting;
     mConnectQty = connectQty;
+    mMinCompPostCost = minCompPostCost;
+    mComponentId = componentId;
     extendElemInfo(INIT_SIZE_ELEM_INFO);
   }
   
@@ -261,6 +274,20 @@ public abstract class OnePostStateBase {
    *         via a query graph.
    */
   public int getConnectQty() { return mConnectQty; }
+
+  /**
+   * @return a minimum cost among postings associated with the subset
+   *         of nodes connected to this posting.   
+   */
+  public long getMinCompPostCost() { return mMinCompPostCost; }
+  
+  
+  /**
+   * @return a unique ID associated with the subset of nodes that
+   *         are connected to this one.   
+   */
+  public int getComponentId() { return mComponentId; }
+  
   
   /**
    * Move to the first document with id >= docId.
@@ -429,6 +456,8 @@ public abstract class OnePostStateBase {
   protected StructQueryParse.ConstraintType[]     mConstrType = null;
   protected OnePostStateBase[]                    mConstrNode = null;
   protected int                                   mConnectQty = 0;
+  protected long                                  mMinCompPostCost = Long.MAX_VALUE;
+  protected int                                   mComponentId = -1;
   protected int                                   mSortIndx = -1;
 
 }

@@ -41,7 +41,11 @@ public class StructQueryParseVer3 {
   public final static String PREFIX_ANNOT = "@";
   public static final char LABEL_SEPARATOR = ':';
   public static final char PREFIX_OP = '#';
+  public static final String PREFIX_OP_STR = PREFIX_OP + "";
   
+  private static final String CONSTR_FMT = PREFIX_OP +
+      "<constraint name>(<head element label>,<dependent element label 1>,...<dependent element label N>)";
+
   /**
    * @return a list of text/annotation terms.
    */
@@ -333,17 +337,16 @@ public class StructQueryParseVer3 {
    * Parse constraint-related info and memorizes it.
    */
   private void addConstraint(String tok) throws SyntaxError {
-    assert(tok.startsWith("#"));
+    assert(tok.startsWith(PREFIX_OP_STR));
     
-    String constrFmt = "#<constraint name>(<head element label>,<dependent element label 1>,...<dependent element label N>)";
     if (!tok.endsWith(")")) {
       throw new SyntaxError(String.format("Wrong format for the constraint '%s', expected format: %s",
-                                          tok, constrFmt));
+                                          tok, CONSTR_FMT));
     }
     int pos = tok.indexOf('(');
     if (pos == -1) {
       throw new SyntaxError(String.format("Missing '(' in the constraint '%s', expected format: %s",
-          tok, constrFmt));      
+          tok, CONSTR_FMT));      
     }
     String op = tok.substring(1, pos);
     ConstraintType type = ConstraintType.CONSTRAINT_PARENT;
@@ -358,7 +361,7 @@ public class StructQueryParseVer3 {
       throw new SyntaxError(String.format(
                   "There should be at least 2 elements between '(' and ')'" + 
                   " in the constraint '%s', expected format %s",
-                  tok, constrFmt));
+                  tok, CONSTR_FMT));
     }
     String headLabel = parts[0].trim();
     Integer headId = mLabel2Id.get(headLabel);
@@ -400,7 +403,8 @@ public class StructQueryParseVer3 {
        * This is a potentially horrible linear-time complexity search
        * in an array. However, for a reasonable-size user query 
        * these arrays are going to be tiny and, in practice, 
-       * such a linear search  be as fast as or likely even faster than a hash.
+       * such a linear search  be as fast as or likely even faster than 
+       * a hash/tree map lookup.
        */
       if (!mEdges.get(depId).contains(headId))
         mEdges.get(depId).add(headId);

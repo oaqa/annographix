@@ -53,6 +53,38 @@ public class StructQueryParseTest {
     }
   }
   
+  @Test
+  public void testMergeConstr() {
+    String query = 
+        " #covers(a1,k3) #covers(a1,k2) @a1:a1 ~k1:k1 ~k2:k2 ~k3:k3 #covers(a1,k1) " +
+        " #parent(a4,a3) #parent(a4,a2) @a2:a2 @a3:a3 @a4:a4 ";
+    try {
+      String tokens_[]  = {"a1", "k1", "k2", "k3", "a2", "a3", "a4"};
+      String labels_[]  = {"a1", "k1", "k2", "k3", "a2", "a3", "a4"};
+      String types_[]   = {"FIELD_ANNOTATION", "FIELD_TEXT", "FIELD_TEXT", "FIELD_TEXT",
+                            "FIELD_ANNOTATION", "FIELD_ANNOTATION","FIELD_ANNOTATION"};
+      String constrType_[] = 
+        {"CONSTRAINT_CONTAINS,CONSTRAINT_CONTAINS,CONSTRAINT_CONTAINS","","","",
+         "", "", "CONSTRAINT_PARENT,CONSTRAINT_PARENT" };
+      /*
+       *  Note the order of dependent IDs, it coincides with the order in 
+       *  which constraints appear in the original query!
+       */
+      String dependId_[]   = {"3,2,1","","","", "", "", "5,4"}; 
+      int    connectQty_[] =  {4, 4, 4, 4, 3, 3, 3};
+      int    componentId_[] = {0, 0, 0, 0, 1, 1, 1};
+      
+      StructQueryParseVer3 p = new StructQueryParseVer3(query);
+      
+      assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, 
+                             connectQty_, componentId_));
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail("Exception occurred.");      
+    } 
+    
+  }
+  
   /**
    * Simple query without any constraints.
    */

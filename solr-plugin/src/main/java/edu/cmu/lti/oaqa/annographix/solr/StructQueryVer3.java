@@ -29,7 +29,7 @@ import org.apache.solr.search.SyntaxError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParseVer3.FieldType;
 
 /**
   *  Structured query parser: it finds occurrences of an arbitrary
@@ -58,7 +58,7 @@ public class StructQueryVer3 extends Query {
   private Term              mCoverAnnotTerm;
   
   /** a parsed query */
-  private final StructQueryParse              mQueryParse;
+  private final StructQueryParseVer3              mQueryParse;
   /** query tokens (annotation or plain text) */
   private final ArrayList<String>             mTokens;
   /** token types */
@@ -96,7 +96,7 @@ public class StructQueryVer3 extends Query {
     mTextFieldName = textFieldName;
     mAnnotFieldName = annotFieldName;
     
-    mQueryParse = new StructQueryParse(mQueryText);
+    mQueryParse = new StructQueryParseVer3(mQueryText);
     
     mTokens = mQueryParse.getTokens();
     mTokenTypes = mQueryParse.getTypes();

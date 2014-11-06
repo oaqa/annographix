@@ -337,7 +337,7 @@ public abstract class TermSpanIterator {
    * of the annotation whose start offset is always < span' end offset, 
    * but the end offset may actually be larger than the span's end offset. 
    * Because of this, we have an additional check inside
-   * the function {@link #checkSpanConstraints(int)}. This is done in this way
+   * the function {@link #checkSpanConstraints()}. This is done in this way
    * because annotations/tokens are sorted only by the start offsets,
    * while the end offset doesn't increase or decrease monotonically as we
    * move from annotation to annotation. However, when the start offset

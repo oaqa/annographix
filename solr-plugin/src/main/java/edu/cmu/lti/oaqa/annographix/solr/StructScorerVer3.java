@@ -26,7 +26,7 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
-import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParseVer3.FieldType;
 
 
 /**
@@ -85,7 +85,7 @@ public class StructScorerVer3 extends Scorer {
    * @param docScorerAnnotField A similarity scorer for the annotation field.
    */
   public StructScorerVer3(Weight weight,
-                          StructQueryParse queryParse, 
+                          StructQueryParseVer3 queryParse, 
                           DocsAndPositionsEnum[] postings,
                           DocsAndPositionsEnum   coverAnnotPost,
                           int span,

@@ -30,32 +30,35 @@ import org.apache.solr.search.SyntaxError;
  * @author Leonid Boytsov
  *
  */
-public class StructQueryParse {
+public class StructQueryParseVer3 {
   public enum  FieldType      { FIELD_TEXT, FIELD_ANNOTATION };
   public enum  ConstraintType { CONSTRAINT_PARENT, CONSTRAINT_CONTAINS };
   
-  public String CONSTR_PARENT = "parent";
-  public String CONSTR_CONTAINS = "covers";
+  public final static String CONSTR_PARENT = "parent";
+  public final static String CONSTR_CONTAINS = "covers";
   
-  public String PREFIX_TOKEN = "~";
-  public String PREFIX_ANNOT = "@";
+  public final static String PREFIX_TEXT = "~";
+  public final static String PREFIX_ANNOT = "@";
+  public static final char LABEL_SEPARATOR = ':';
+  public static final char PREFIX_OP = '#';
   
   /**
-   * @return a list of tokens/annotation labels.
+   * @return a list of text/annotation terms.
    */
   public final ArrayList<String> getTokens() {
     return mTokens;
   }
 
   /**
-   * @return a list of token types (
+   * @return an array of field types (an array element denotes 
+   * either a text field or an annotation field).
    */
   public final ArrayList<FieldType> getTypes() {
     return mTypes;
   }
   
   /**
-   * @param     index   a token/annotation index.
+   * @param     index   a text terms/annotation index.
    * @return    a number of postings connected with a given node/posting 
    *            via a query graph.
    */
@@ -64,16 +67,14 @@ public class StructQueryParse {
   }
 
   /**
-   * @param     index       a token/annotation index.
-   * @param     componentId a unique ID associated with the subset of nodes that
-   *                        are connected to this one.
+   * @param     index       a text term/annotation index.
    */
   public int getComponentId(int index) {
     return mComponentId.get(index);
   }  
 
   /**
-   * @param     index   a token/annotation index.
+   * @param     index   a token (text/annotation term) index.
    * @return    a list of constraints specific to the token
    */
   public final ArrayList<ConstraintType> getConstrTypes(int index) {
@@ -81,11 +82,9 @@ public class StructQueryParse {
   }
   
   /**
-   * @param     index   a token/annotation index.
-   * @return    a list of token ids for which there exist constraints,
-   *            these constraints are all associated with the current posting,
-   *            e.g., the annotation/token associated with the posting can be
-   *            a parent of the dependent/constraint posting.
+   * @param     index   a token (text/annotation term) index.
+   * @return    a list of token IDs for which there exist constraints (e.g.,
+   *            a parent-child relationship).
    */
    public final ArrayList<Integer> getDependIds(int index) {
      return mDependId.get(index);
@@ -98,7 +97,7 @@ public class StructQueryParse {
    * @param     query
    * @throws    SyntaxError
    */
-  public StructQueryParse(String query) throws SyntaxError {
+  public StructQueryParseVer3(String query) throws SyntaxError {
     /*
      *  All white-spaces should become spaces
      *  TODO: can this replacement be problematic, i.e., 
@@ -110,22 +109,22 @@ public class StructQueryParse {
     query = query.replaceAll("\\s+", " "); 
     ArrayList<String> allConstr = new ArrayList<String>();
     for (String tok: query.trim().split("\\s+")) {
-      if (tok.charAt(0) == '#') {
+      if (tok.charAt(0) == PREFIX_OP) {
         // we will process all the constraints after we are done with lexical entries
         allConstr.add(tok);
       } else {
-        // a token or an annotation
+        // a text/annotation field
         FieldType           type = FieldType.FIELD_TEXT;
         LexicalEntryParse   e = null;
-        if (tok.startsWith(PREFIX_TOKEN)) {
-          e = procLexicalEntry(PREFIX_TOKEN, tok);
+        if (tok.startsWith(PREFIX_TEXT)) {
+          e = procLexicalEntry(PREFIX_TEXT, tok);
         } else if (tok.startsWith(PREFIX_ANNOT)) {
           type = FieldType.FIELD_ANNOTATION;
           e = procLexicalEntry(PREFIX_ANNOT, tok);
         } else {
           throw new SyntaxError(String.format(
-              "Bad token '%s', should start with #, %s, or %s",
-              tok, PREFIX_TOKEN, PREFIX_ANNOT));
+              "Bad token '%s', should start with %c, %s, or %s",
+              tok, PREFIX_OP, PREFIX_TEXT, PREFIX_ANNOT));
         }
         addOneElement(e, type);
       }
@@ -136,7 +135,7 @@ public class StructQueryParse {
     
     /*
      * Now all lexical entries are added (and we fully established
-     * the mappings from labels to ids). Thus, we can process
+     * the mappings from text/annotation labels to IDs). Thus, we can process
      * constraints.
      */
     for (String tok: allConstr)
@@ -155,15 +154,15 @@ public class StructQueryParse {
    * 
    * A helper comparison function used only for testing.
    * 
-   * @param tokens_             an tokens/annotations.
+   * @param tokens_             an array of text/annotation terms.
    * @param labels_             an array of labels (used for references).
    * @param types_              an array of serialized types.
    * @param constrType_         constraint types, each
    *                            array element is a string with comma separated
    *                            serialized constraints. 
-   * @param dependId_           dependent ids for constrained/child elements,
+   * @param dependId_           dependent IDs for constrained/child elements,
    *                            each array element is a string with comma separated
-   *                            dependency ids. 
+   *                            dependency IDs. 
    * @param connectQty_         array of "connectedness" values (numbers of postings 
    *                            connected with a given node/posting via a query graph).
    * @param componentId_        array of component IDs: each subset of connected
@@ -291,12 +290,12 @@ public class StructQueryParse {
    * @throws SyntaxError
    */
   private LexicalEntryParse procLexicalEntry(String prefix, String token) throws SyntaxError {
-    int pos = token.indexOf(':', prefix.length());
+    int pos = token.indexOf(LABEL_SEPARATOR, prefix.length());
     
     if (pos < 0) {
       throw new SyntaxError(String.format(
-          "Bad token '%s', missing colon and/or element label after the prefix '%s'",
-          token, prefix));  
+          "Bad token '%s', missing '%s' and/or element label after the prefix '%s'",
+          token, LABEL_SEPARATOR, prefix));  
     }
     String label = token.substring(prefix.length(), pos);
     

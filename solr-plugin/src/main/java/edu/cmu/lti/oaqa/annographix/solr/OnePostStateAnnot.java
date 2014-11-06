@@ -23,7 +23,7 @@ import java.io.IOException;
 
 import org.apache.lucene.index.DocsAndPositionsEnum;
 
-import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParseVer3.FieldType;
 
 
 

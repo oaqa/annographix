@@ -43,7 +43,7 @@ public class StructQueryParseTest {
       int    connectQty_[] = {0, 0, 0, 0};
       int    componentId_[] = {0, 1, 2, 3};
       
-      StructQueryParse p = new StructQueryParse(query);
+      StructQueryParseVer3 p = new StructQueryParseVer3(query);
       
       assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, 
                              connectQty_, componentId_));
@@ -64,7 +64,7 @@ public class StructQueryParseTest {
     
     try {
 
-      StructQueryParse p = new StructQueryParse(query);
+      StructQueryParseVer3 p = new StructQueryParseVer3(query);
     } catch (Exception e) {
       System.out.println("Error message: " + e);
       bGotException = true;      
@@ -98,7 +98,7 @@ public class StructQueryParseTest {
       int    connectQty_[] = {3, 3, 3, 3, 3, 3};
       int    componentId_[] = {0, 0, 0, 1, 1, 1}; 
       
-      StructQueryParse p = new StructQueryParse(query);
+      StructQueryParseVer3 p = new StructQueryParseVer3(query);
       
       assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, 
                              connectQty_, componentId_));
@@ -120,7 +120,7 @@ public class StructQueryParseTest {
     
     try {
 
-      StructQueryParse p = new StructQueryParse(query);
+      StructQueryParseVer3 p = new StructQueryParseVer3(query);
     } catch (Exception e) {
       System.out.println("Error message: " + e);
       bGotException = true;      
@@ -141,7 +141,7 @@ public class StructQueryParseTest {
     
     try {
 
-      StructQueryParse p = new StructQueryParse(query);
+      StructQueryParseVer3 p = new StructQueryParseVer3(query);
     } catch (Exception e) {
       System.out.println("Error message: " + e);
       bGotException = true;      
@@ -182,7 +182,7 @@ public class StructQueryParseTest {
       int    connectQty_[] = {3, 3, 3, 0, 2, 2};
       int    componentId_[] = {0, 0, 0, 1, 2, 2};
       
-      StructQueryParse p = new StructQueryParse(query);
+      StructQueryParseVer3 p = new StructQueryParseVer3(query);
       
       assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, 
                              connectQty_, componentId_));
@@ -254,7 +254,7 @@ public class StructQueryParseTest {
       int    connectQty_[] = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10}; 
       int    componentId_[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
       
-      StructQueryParse p = new StructQueryParse(query);
+      StructQueryParseVer3 p = new StructQueryParseVer3(query);
       
       assertTrue(p.compareTo(tokens_, labels_, types_, constrType_, dependId_, 
                             connectQty_, componentId_));

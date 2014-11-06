@@ -26,8 +26,8 @@ import java.util.Comparator;
 
 import org.apache.lucene.index.DocsAndPositionsEnum;
 
-import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.ConstraintType;
-import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParseVer3.ConstraintType;
+import edu.cmu.lti.oaqa.annographix.solr.StructQueryParseVer3.FieldType;
 
 /** 
  * This a base helper class to read annotation and token info from posting lists. 
@@ -338,12 +338,12 @@ public abstract class OnePostStateBase {
    * 
    * @throws Exception
    */
-  public void setConstraints(ArrayList<StructQueryParse.ConstraintType> constrType,
+  public void setConstraints(ArrayList<StructQueryParseVer3.ConstraintType> constrType,
                              ArrayList<OnePostStateBase> constrNode) {
     if (constrNode.size() != constrType.size()) {
       throw new RuntimeException("Bug: constrType.size() != constrNode.size()");
     }
-    mConstrType = new StructQueryParse.ConstraintType[constrType.size()];
+    mConstrType = new StructQueryParseVer3.ConstraintType[constrType.size()];
     mConstrNode = new OnePostStateBase[constrNode.size()];
     
     for (int i = 0; i < constrType.size(); ++i) {
@@ -455,7 +455,7 @@ public abstract class OnePostStateBase {
   protected StartOffsetElemInfoDataComparator   mOffsetComp = 
                                       new StartOffsetElemInfoDataComparator();
   
-  protected StructQueryParse.ConstraintType[]     mConstrType = null;
+  protected StructQueryParseVer3.ConstraintType[]     mConstrType = null;
   protected OnePostStateBase[]                    mConstrNode = null;
   protected int                                   mConnectQty = 0;
   protected long                                  mMinCompPostCost = Long.MAX_VALUE;

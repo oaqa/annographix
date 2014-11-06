@@ -28,6 +28,7 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 
+
 /**
  * 
  * A custom scorer class.
@@ -51,6 +52,7 @@ public class StructScorerVer3 extends Scorer {
   private int       mCurrDocId = -1;
   private int       mSpan = Integer.MAX_VALUE;
   private int       mNumMatches = 0;
+  
   /** 
    * All postings (+the posting of the covering annotation if the latter exists)
    * sorted in the order of increasing cost.
@@ -60,7 +62,7 @@ public class StructScorerVer3 extends Scorer {
    * Text/annotation only postings sorted first in the order of decreasing
    * connectedness, then in the order of increasing posting cost.
    */
-  private OnePostStateBase[] mPostSortedByConnectCost;
+  private OnePostStateBase[] mPostSortByConnQtyMinCostCompIdPostCost;
   /**
    * A number of connected postings.
    */
@@ -90,6 +92,7 @@ public class StructScorerVer3 extends Scorer {
                           SimScorer docScorerTextField, 
                           SimScorer docScorerAnnotField) {
     super(weight);
+
     mDocScorerAnnotField = docScorerAnnotField;
     mDocScorerTextField = docScorerTextField;
     mSpan = span;
@@ -158,22 +161,26 @@ public class StructScorerVer3 extends Scorer {
     /** 2. Sorting for efficient search within documents. */
     
     // First we need create arrays of constraints
-    mPostSortedByConnectCost = new OnePostStateBase[tokQty];    
+    mPostSortByConnQtyMinCostCompIdPostCost = new OnePostStateBase[tokQty];    
     for(int i = 0; i < tokQty; ++i) {
-      mPostSortedByConnectCost[i] = allPostListUnsorted.get(i);
+      mPostSortByConnQtyMinCostCompIdPostCost[i] = allPostListUnsorted.get(i);
       ArrayList<OnePostStateBase>   constrNode = new ArrayList<OnePostStateBase>(); 
       
       for (int depId : queryParse.getDependIds(i))
         constrNode.add(allPostListUnsorted.get(depId));
       
-      mPostSortedByConnectCost[i].setConstraints(queryParse.getConstrTypes(i), 
+      mPostSortByConnQtyMinCostCompIdPostCost[i].setConstraints(queryParse.getConstrTypes(i), 
                                                  constrNode);
     }
-    // Sort them and assign sort indexes
-    Arrays.sort(mPostSortedByConnectCost, new SortPostByConnectQtyAndCost());
+    // Sort postings and assign sort indexes...
+    Arrays.sort(mPostSortByConnQtyMinCostCompIdPostCost, 
+                new SortByConnQtyMinCostCompIdPostCost());
     
-    for (int i = 0; i < tokQty; ++i)
-      mPostSortedByConnectCost[i].setSortIndex(i);
+    for (int i = 0; i < tokQty; ++i) {
+      mPostSortByConnQtyMinCostCompIdPostCost[i].setSortIndex(i);
+    }
+    
+    // Postings are supposed
     
     /*
      *  Let's create a span iterator. It is defined by either
@@ -182,11 +189,11 @@ public class StructScorerVer3 extends Scorer {
      */
     if (mCoverAnnotPost != null) {
       mTermSpanIterator = 
-          new TermSpanIteratorCoverAnnot(mPostSortedByConnectCost,
+          new TermSpanIteratorCoverAnnot(mPostSortByConnQtyMinCostCompIdPostCost,
                                          mCoverAnnotPost); 
     } else {
       mTermSpanIterator = 
-          new TermSpanIteratorMaxLen(mPostSortedByConnectCost,
+          new TermSpanIteratorMaxLen(mPostSortByConnQtyMinCostCompIdPostCost,
                                      mSpan);
       
     }
@@ -307,7 +314,7 @@ public class StructScorerVer3 extends Scorer {
     mTermSpanIterator.initSpanIteration();
     int qty = 0;
     while (mTermSpanIterator.nextSpan()) {
-      if (mTermSpanIterator.checkSpanConstraints(0)) ++qty;
+      if (mTermSpanIterator.checkSpanConstraints()) ++qty;
     }
     return qty;
   }
@@ -349,7 +356,7 @@ public class StructScorerVer3 extends Scorer {
    * component, a posting with lower score is prioritized.</p>
    *
    */
-  class SortPostByConnectQtyAndCost implements Comparator<OnePostStateBase> {
+  class SortByConnQtyMinCostCompIdPostCost implements Comparator<OnePostStateBase> {
 
     @Override
     public int compare(OnePostStateBase o1, OnePostStateBase o2) {

@@ -47,10 +47,8 @@ public class AnnotEncoderVer3 extends AbstractEncoder
         else if (2 == sepQty) sep2pos = i;
         else if (3 == sepQty) sep3pos = i;
         else {
- // TODO: make the logging work, for some reason I wasn't able to access SOLR logger from this function          
- //       String errData = new String(buffer, offset, length);
- //       System.err.println("Cannot parse payload: " + errData);
-          throw new IllegalArgumentException();
+          String errData = new String(buffer, offset, length);
+          throw new RuntimeException("Cannot parse payload input: " + errData);
         }
       }
     }
@@ -75,9 +73,8 @@ public class AnnotEncoderVer3 extends AbstractEncoder
    *  Decodes payload data.
    *  
    *  @param buffer   A buffer that stores encoded payload data.
-   *  @param res      A result variable: To prevent unnecessary 
-   *                  memory allocations re-use the same variable
-   *                  among multiple calls to this function.
+   *  @param res      A reusable result variable, which is used 
+   *                  to prevent unnecessary memory allocations.
    */
   public static void decode(BytesRef buffer, 
                             ElemInfoData res /* reuse this variable */) {

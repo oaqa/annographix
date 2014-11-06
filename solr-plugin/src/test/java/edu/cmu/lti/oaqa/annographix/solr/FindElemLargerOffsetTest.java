@@ -86,7 +86,7 @@ public class FindElemLargerOffsetTest {
   @Test
   public void testLarge() {
     try {
-      int offsets[] = new int[4096];
+      int offsets[] = new int[2048];
       for (int i = 0; i < offsets.length; ++i) offsets[i] = 2*i;
       
       for (int k = 0; k < 3; ++k)

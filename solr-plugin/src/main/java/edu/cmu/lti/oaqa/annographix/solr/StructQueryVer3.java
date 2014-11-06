@@ -26,6 +26,9 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.solr.search.SyntaxError;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import edu.cmu.lti.oaqa.annographix.solr.StructQueryParse.FieldType;
 
 /**
@@ -60,6 +63,10 @@ public class StructQueryVer3 extends Query {
   private final ArrayList<String>             mTokens;
   /** token types */
   private final ArrayList<FieldType>          mTokenTypes;
+  
+  
+  private static final Logger logger = LoggerFactory.getLogger(StructQueryVer3.class);
+
   
   /**
    * Constructor.
@@ -106,7 +113,9 @@ public class StructQueryVer3 extends Query {
     if (mCoverAnnotLabel != null) {
       mCoverAnnotTerm = new Term(mAnnotFieldName, mCoverAnnotLabel);
     }
-
+    logger.info(
+        String.format("Query created, span %d, covering annot. '%s'",
+                      mSpan, mCoverAnnotLabel != null ? mCoverAnnotLabel:""));
   }
   
   @Override
@@ -168,7 +177,7 @@ public class StructQueryVer3 extends Query {
         else 
           termStatsAnnotFieldLst.add(stat);
           
-      }
+      }                  
       
       if (mCoverAnnotTerm != null)
         mCoverAnnotContext = TermContext.build(readerContext, mCoverAnnotTerm);

@@ -127,48 +127,58 @@ public abstract class TermSpanIterator {
     return false;
   }
   
+  /**
+   * Find elements fitting into the span and satisfying constraints.
+   * Note that we carry out a separate check for each component (components
+   * are not connected to each other) starting from the component with
+   * the largest number of components (or small minimum posting cost if there are ties).
+   * 
+   * @return true if we can find elements satisfying span constrains
+   */
+  public boolean checkSpanConstraints() {
+    int prevCompId = -1;
+    // We want to consider components in the order they are sorted 
+    for (int i = 0; i < mPostSorted.length; ++i) {
+      int compId = mPostSorted[i].getComponentId();
+      if (compId == prevCompId) continue; // This component was checked already
+      prevCompId = compId;
+      if (!checkSpanConstraintsForOneComponent(mCompStartId[compId],
+                                               mCompEndId[compId], 
+                                               mCompStartId[compId]))
+        return false;
+    }
+    return true;
+  }  
   
   /**
-   * Checks if span constraints can be satisfied. 
+   * Checks if span constraints can be satisfied for one component. 
+   * There may be more than one component (a sub-graph) that are
+   * disconnected from each other. This function checks only one.
    * 
    * <p>Constraints include:
    * parent-child and containment relationship, as well as containment
    * inside the span. Because ending offsets of indexed elements do not
    * necessarily increase monotonically while we monotonically increase 
    * starting offsets, the element fitting into the span may follow 
-   * an element that can be fit into the span only partially. To ensure
+   * an element that can fits into the span only partially. To ensure
    * that all elements inside the span are considered, we need to iterate
    * until the starting offset becomes >= than the span's end offset.
    * 
-   * <p>This is a recursive function that accepts a starting posting index.
-   * Postings are sorted in the order of decreasing connectedness (i.e.,
-   * most constraining nodes go first). The key heuristic is 
-   * i) to select most connected elements first ii) add more elements
-   * to see if these additions violate any constraints related to
-   * previously selected nodes.</p>
    * 
-   * <p>Because we 
-   * add elements in the order of decreasing connectedness, we can expect 
-   * more combinations to be pruned early (due to our inability to satisfy 
-   * constraints). This may reduce the volume of recursion.</p>
-   * 
-   * <p>If, in contrast, we start with elements that have no constraints,
-   * there may be a lot of combinations and all the combinations are valid
-   * until we add a constraining node. Early introduction of the constraining node
-   * may prevent considering all these combinations. Remember that we do
-   * not care about the overall number of valid combinations, only whether or 
-   * not a valid combination exists within a span.
-   * </p>
-   * 
+   * @param     compStartId        an id of the first element in the component (inclusive).
+   * @param     compEndId          an id of the last element in the component (inclusive).
    * @param     startPostIndex     the current posting index, should be 0 when we call
    *                               this recursive function the first time we enter a recursion.
    * 
    * @return    true if we can find a combination of elements within
    *            the span that satisfy the constraints, or false otherwise.
    */
-  public boolean checkSpanConstraints(int startPostIndex) {
-    if (startPostIndex >= mPostSorted.length) {
-    // We checked successfully all the constraints, yay!
+  public boolean checkSpanConstraintsForOneComponent(
+                                      int compStartId,
+                                      int compEndId,
+                                      int startPostIndex) {
+    if (startPostIndex > compEndId) {
+    // We checked successfully all the constraints for this component
       return true;
     }
     
@@ -184,7 +194,7 @@ public abstract class TermSpanIterator {
        * [mStartElemIndx[startPostIndex],mEndElemIndx[startPostIndex]] starting
        * offsets are between the start and end offset of the current span.
        * 
-       * However, it is not guaranteed that end offsets fit into the current span.
+       * However, it is not guaranteed for end offsets.
        * Due to non-monotonicity of end offsets (as the function of start offset),
        * one element may fall out the current span while some following elements
        * may still fit in.
@@ -196,7 +206,7 @@ public abstract class TermSpanIterator {
        * An example (square brackets denote annotation boundary):
        *    [     ]       span
        *    [      ]      element 1 (fits in only partially)
-       *     [   ]        element 2 (fits in completely)
+       *     [   ]        element 2 (follows element 1, but fits into the span)
        */
       ElemInfoData currElement = elem.getCurrElement();
       if (currElement.mEndOffset > mCurrSpanEndOffset)
@@ -204,24 +214,19 @@ public abstract class TermSpanIterator {
           
       boolean bOk = true;
       /*
-       *  Check constraints related to earlier postings,
-       *  but only if we are dealing with connected components.
-       *  We have two types of such constraints: when the current
-       *  node is constraint and the current node is constraining.
-       *  
-       *  Recall that posts are sorted in such a way,
-       *  that posts with indices >= mPostConnectQty are not
-       *  constraining other posts and 
-       *  are not being constrained by other posts.
+       *  Check constraints related to earlier postings
+       *  that belong to the same component.
+       *  We can disregard postings from other components,
+       *  because there are no constraints shared with them.
        */
-      if (startPostIndex < mPostConnectQty) {
-        // Current node is constraining
-        if (startPostIndex > 0 &&
-            !mPostSorted[startPostIndex].checkConstraints(0, startPostIndex - 1)) {
+      if (startPostIndex  > compStartId) {
+        // Current node is constraining, compStartId <= startPostIndex - 1
+        if (!mPostSorted[startPostIndex].checkConstraints(compStartId, 
+                                                          startPostIndex - 1)) {
           bOk = false;
         } else {
-          for (int k = 0; k < startPostIndex; ++k)
-         // Current node is constraint
+          for (int k = compStartId; k < startPostIndex; ++k)
+         // Current node is being constrained by previous component nodes
             if (!mPostSorted[k].checkConstraints(startPostIndex, startPostIndex)) {
               bOk = false; 
               break;
@@ -231,12 +236,19 @@ public abstract class TermSpanIterator {
          
       if (bOk) {
         /*
-         *  Ok, we are good for post indices 0..startPostIndex (no
-         *  constraints are violated), let's see if we can find some 
-         *  valid combinations of positions that conform with positions 
-         *  selected for postings 0..startPostIndex and each other. 
+         *  Ok, we are good for post indices from compStartId to startPostIndex.
+         *  That is, there are combinations of elements fully fitting into 
+         *  the span and satisfying all the constraints.
          */
-        boolean f = checkSpanConstraints(startPostIndex + 1);
+        if (startPostIndex == compEndId) return true; // all checks are done
+        /*
+         *  Let's see if this can be extended to node components with indices
+         *  larger than startPostIndex. 
+         */
+        boolean f = checkSpanConstraintsForOneComponent(
+                                    compStartId, 
+                                    compEndId,
+                                    startPostIndex + 1);
         if (f) return true; // At least one combination exists!
       }
     }
@@ -255,11 +267,35 @@ public abstract class TermSpanIterator {
     mStartElemIndx  = new int[mPostSorted.length];
     mEndElemIndx    = new int[mPostSorted.length];
 
-    for (int i = 0; 
-        i < mPostSorted.length && mPostSorted[i].getConnectQty() > 0; 
-        ++i) {
-      mPostConnectQty = i + 1;
+    boolean[] seen = new boolean[mPostSorted.length];
+        
+    for (int i = 0; i < mPostSorted.length; ++i) { 
+      mCompQty = Math.max(mCompQty, mPostSorted[i].getComponentId() + 1);
     }
+    
+    mCompStartId = new int[mCompQty];
+    mCompEndId = new int[mCompQty];
+    
+    for (int i = 0; i < mPostSorted.length; ++i) {
+      int compId = mPostSorted[i].getComponentId();
+      mCompEndId[compId] = i;
+
+      if (i==0 || 
+          compId != mPostSorted[i-1].getComponentId()) {
+      /*
+       *  New component? 
+       *  Check if we encountered it previously:
+       *  we shouldn't have seen it if there're no bugs. 
+       */
+        if (seen[compId]) {
+          throw new RuntimeException(
+              "Bug: non-contiguous placement of components, " + 
+              "encountered compId=" + compId + " again.");
+        }
+        seen[compId] = true;
+        mCompStartId[compId] = i; 
+      }
+    }    
   }
   
   /**
@@ -305,9 +341,14 @@ public abstract class TermSpanIterator {
    * be found inside the covering annotation.
    * 
    */
-  protected  int[]                     mEndElemIndx;  
-  /** A number of connected postings. */
-  protected  int                       mPostConnectQty = 0;  
+  protected int[]                     mEndElemIndx;  
+  
+  /** A number of disjoint sub-graphs/components. */
+  protected int                       mCompQty = 0; 
+  /** Components' start indices */
+  protected int[]                     mCompStartId;
+  /** Components' end indices */
+  protected int[]                     mCompEndId;  
   /** 
     * The end offset of the current span (exclusive), 
     * updated by a child's class {@link #nextSpanInternal()}. 
@@ -318,5 +359,6 @@ public abstract class TermSpanIterator {
    * updated by a child's class {@link #nextSpanInternal()}. 
    */
   protected int                        mCurrSpanStartOffset = -1;
+  
 }
 

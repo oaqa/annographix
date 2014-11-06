@@ -372,14 +372,16 @@ public abstract class OnePostStateBase {
    * with the index in the range [sortIndxMin, sortIndxMax] are satisfied.
    *  
    * <p>
-   * The complexity of this operation is O(Nconstr). 
-   * In reality, we expect Nconstr to be quite small (around 2-5). 
-   * Thus, iterating over an array is faster than 
+   * The complexity of this operation is O(number of node-specific constraints). 
+   * In reality, we expect the number of node-specific constraints to be quite small 
+   * (around 2-5). Thus, iterating over an array of constraints is faster than 
    * retrieving data from a TreeMap.  
    * </p>
    * 
-   * @param     minSortIndx the minimum id of the node participating in a constraint.
-   * @param     maxSortIndx the minimum id of the node participating in a constraint.
+   * @param     minSortIndx the minimum id of the node participating 
+   *            in a constraint (inclusive).
+   * @param     maxSortIndx the minimum id of the node participating 
+   *            in a constraint (inclusive).
    * 
    * @return    true if constraints are satisfied and false otherwise.
    */

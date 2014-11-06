@@ -6,7 +6,7 @@ import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.search.QParser;
 import org.apache.solr.search.SyntaxError;
 
-class StructRetrQParserVer3 extends QParser {
+public class StructRetrQParserVer3 extends QParser {
   /** a query boost */
   float     mBoost = 1.0f;
   /** a current parser version */

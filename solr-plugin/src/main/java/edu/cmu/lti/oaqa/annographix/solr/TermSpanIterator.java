@@ -131,7 +131,8 @@ public abstract class TermSpanIterator {
    * Find elements fitting into the span and satisfying constraints.
    * Note that we carry out a separate check for each component (components
    * are not connected to each other) starting from the component with
-   * the largest number of components (or small minimum posting cost if there are ties).
+   * the largest number of nodes/elements (or the smallest 
+   * minimum posting cost if there are ties).
    * 
    * @return true if we can find elements satisfying span constrains
    */
@@ -154,6 +155,9 @@ public abstract class TermSpanIterator {
    * Checks if span constraints can be satisfied for one component. 
    * There may be more than one component (a sub-graph) that are
    * disconnected from each other. This function checks only one.
+   * Note that postings are already sorted in such a way that elements/nodes/postings
+   * belonging to the same component occupy a contiguous range of indices
+   * of the array mPostSorted.
    * 
    * <p>Constraints include:
    * parent-child and containment relationship, as well as containment

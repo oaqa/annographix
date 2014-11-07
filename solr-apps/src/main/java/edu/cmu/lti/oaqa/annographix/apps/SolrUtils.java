@@ -42,7 +42,7 @@ import edu.cmu.lti.oaqa.annographix.util.HttpHelper;
  * https://github.com/oaqa/solr-provider/ .
  *
  * <p>
- * It is different in at least two ways:
+ * It is different in several ways:
  * </p>
  * <ol> 
  *   <li> 
@@ -55,6 +55,9 @@ import edu.cmu.lti.oaqa.annographix.util.HttpHelper;
  *   <li> 
  *     It has an improved function getFieldText that can read text from  multiple-value text fields.
  *   </li> 
+ *   <li>
+ *     Leo removed the pesky escapeQuery that did quite a bit of harm in some cases!
+ *   </li>
  * </ol>
  * 
  * @author Alkesh Patel 
@@ -81,7 +84,7 @@ public final class SolrUtils implements Closeable {
 	public SolrDocumentList runQuery(String q, int results)
 			throws SolrServerException {
 		SolrQuery query = new SolrQuery();
-		query.setQuery(escapeQuery(q));
+		query.setQuery(q);
 		query.setRows(results);
 		query.setFields("*", "score");
 		QueryResponse rsp = server.query(query, METHOD.POST);
@@ -97,7 +100,7 @@ public final class SolrUtils implements Closeable {
 	public SolrDocumentList runQuery(String q, List<String> fieldList,
 			int results) throws SolrServerException {
 		SolrQuery query = new SolrQuery();
-		query.setQuery(escapeQuery(q));
+		query.setQuery(q);
 		query.setRows(results);
 		query.setFields(fieldList.toArray(new String[1]));
 		QueryResponse rsp = server.query(query, METHOD.POST);
@@ -125,15 +128,6 @@ public final class SolrUtils implements Closeable {
 			}
 		}
 		return docText;
-	}
-
-	public String escapeQuery(String term) {
-		term = term.replace('?', ' ');
-		term = term.replace('[', ' ');
-		term = term.replace(']', ' ');
-		term = term.replace('/', ' ');
-		term = term.replaceAll("\'", "");
-		return term;
 	}
 
 	/**

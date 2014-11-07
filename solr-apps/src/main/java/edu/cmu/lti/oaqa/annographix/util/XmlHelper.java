@@ -37,6 +37,12 @@ import org.xml.sax.SAXException;
 
 import edu.cmu.lti.oaqa.annographix.solr.UtilConst;
 
+/**
+ * A bunch of useful functions to work with XML files.
+ * 
+ * @author Leonid Boytsov
+ *
+ */
 public class XmlHelper {
   public static final String AQUAINT_TEXT = "TEXT";
   public static final String AQUAINT_BODY = "BODY";
@@ -50,7 +56,13 @@ public class XmlHelper {
    * http://www.drdobbs.com/jvm/easy-dom-parsing-in-java/231002580
    */
   
-  // This function ignores the case
+  /**
+   * Find node by node while ignoring the case.
+   * 
+   * @param tagName     node tag (case-insensitive).
+   * @param nodes       a list of nodes to look through.
+   * @return a node name if the node is found, or null otherwise.
+   */
   public static Node getNode(String tagName, NodeList nodes) {
     for ( int x = 0; x < nodes.getLength(); x++ ) {
         Node node = nodes.item(x);
@@ -62,10 +74,13 @@ public class XmlHelper {
     return null;
   }
  
-  /*
-   * Works correctly only for text nodes.
+  /**
+   * Get textual content of a node(for text nodes only).
+   * 
+   * @param node a text node.
+   * @return node's textual content.
    */
-  public static String getNodeValue( Node node ) {
+  public static String getNodeValue(Node node ) {
     NodeList childNodes = node.getChildNodes();
     for (int x = 0; x < childNodes.getLength(); x++ ) {
         Node data = childNodes.item(x);
@@ -75,22 +90,24 @@ public class XmlHelper {
     return "";
   }
 
-  private DocumentBuilderFactory mDocBuildFact;
-  
-  public XmlHelper() {
-    mDocBuildFact = DocumentBuilderFactory.newInstance();
-    mDocBuildFact.setNamespaceAware(false); // no namespaces in our XMLs
-    mDocBuildFact.setValidating(false);
-  }
-  
+  /**
+   * Generates an entry that can be consumed by indexing applications.
+   * 
+   * @param fields      a map, where a keys is an indexable field name,
+   *                    while a value represents field content.
+   * @return an entry in a pseudo-XML (namely XML without declaration) format.
+   * 
+   * @throws ParserConfigurationException
+   * @throws TransformerException
+   */
   public String genXMLIndexEntry(Map <String,String> fields) 
       throws ParserConfigurationException, 
             TransformerException {
-    DocumentBuilderFactory docFactory = mDocBuildFact.newInstance();
+    DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
     DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
    
     Document doc = docBuilder.newDocument();
-    doc.setXmlVersion("1.1");
+    doc.setXmlVersion(UtilConst.XML_VERSION);
     Element rootElement = doc.createElement(UtilConst.INDEX_DOC_ENTRY);
     doc.appendChild(rootElement);
    
@@ -110,12 +127,19 @@ public class XmlHelper {
     StreamResult result = new StreamResult(stringBuffer);    
     transformer.transform(source, result);
     String docStr = stringBuffer.toString();
-    // Let's remove <?xml version="1.1" encoding="UTF-8" standalone="no"?>
+    // Let's remove <?xml version="..." encoding="UTF-8" standalone="no"?>
     return removeHeader(docStr);
   }
   
+  /**
+   * 
+   * Removes an XML declaration.
+   * 
+   * @param docStr input string
+   * @return an XML without declaration.
+   */
   public String removeHeader(String docStr) {
-    // Let's remove <?xml version="1.1" encoding="UTF-8" standalone="no"?>
+    // Let's remove <?xml version="1.0" encoding="UTF-8" standalone="no"?>
     int indx = docStr.indexOf('>');
     // If indx == -1, indx + 1 == 0 => we output the complete string
     String docNoXmlHead = docStr.substring(indx + 1);
@@ -123,8 +147,13 @@ public class XmlHelper {
   }
   
   /**
-   *  Parse a standard two-level XML entry in a semi-Indri format.
-   * 
+   *  Parse a standard two-level XML entry in a semi-Indri format,
+   *  which was produced by the function {@link #genXMLIndexEntry(Map)}.  
+   *  
+   *  @param text      a textual representation of the XML entry.
+   *  
+   *  @return  a map, where keys are field names, while values represent
+   *           values of indexable fields.
    */
   public Map<String, String> parseXMLIndexEntry(String text) throws Exception {
     HashMap<String, String> res = new HashMap<String,String>();
@@ -150,9 +179,52 @@ public class XmlHelper {
     return res;
   }
   
+  private static final 
+  String CLOSING_TAG = "</"  + UtilConst.INDEX_DOC_ENTRY + ">";
+
   /**
-   *  Parse a more complex (3-level) entry in the AQUAINT format.
+   * Several entries produced produced by the function {@link #genXMLIndexEntry(Map)}
+   * can be concatenated in a single file. 
+   * 
+   * <p>
+   * This function helps read them one
+   * by one. It assumes that each indexable entry <b>starts on a new line</b>,
+   * that is <b>not shared</b> with any other indexable entry.
+   * </p>
+   * 
+   * @param inpText input text
+   * @return next entry, or null, if no further entry can be found.
+   * @throws IOException
+   */
+  public static String readNextXMLIndexEntry(BufferedReader inpText) throws IOException {
+    String docLine = inpText.readLine();
+
+    if (docLine == null) return null;
+
+    StringBuilder docBuffer = new StringBuilder();
+
+    boolean foundEnd = false;
+
+    do {
+      docBuffer.append(docLine); docBuffer.append('\n');
+      if (docLine.trim().endsWith(CLOSING_TAG)) {
+        foundEnd = true;
+        break;        
+      }
+      docLine = inpText.readLine();
+    } while (docLine != null);
+
+    return foundEnd ? docBuffer.toString() : null;
+  }
+  
+  /**
+   *  Parses a more complex (3-level) entry in the AQUAINT format.
    *  We extract all 2-d level fields, plus only one (TEXT) 3-d level field.
+   *  
+   *  @param docText     a textual representation of the AQUAINT XML entry.
+   *  
+   *  @return  a map, where keys are field names, while values represent
+   *           values of indexable fields.
    *  
    */
   public Map<String, String> parseXMLAQUAINTEntry(String docText) throws Exception {
@@ -208,36 +280,20 @@ public class XmlHelper {
     
     return res;
   }
-  
-  
-  
-  private static final 
-                String CLOSING_TAG = "</"  + UtilConst.INDEX_DOC_ENTRY + ">";
-  
-  public static String readNextXMLIndexEntry(BufferedReader inpText) throws IOException {
-    String docLine = inpText.readLine();
-    
-    if (docLine == null) return null;
-    
-    StringBuilder docBuffer = new StringBuilder();
-        
-    boolean foundEnd = false;
-    
-    do {
-      docBuffer.append(docLine); docBuffer.append('\n');
-      if (docLine.trim().endsWith(CLOSING_TAG)) {
-        foundEnd = true;
-        break;        
-      }
-      docLine = inpText.readLine();
-    } while (docLine != null);
-    
-    return foundEnd ? docBuffer.toString() : null;
-  }
-  
+      
+  /**
+   * Parse an XML document represented by a string.
+   * 
+   * @param docLine a textual representation of XML document.
+   * @return an object of the type {@link org.w3c.dom.Document}.
+   * @throws ParserConfigurationException
+   * @throws SAXException
+   * @throws IOException
+   */
   public Document parseDocument(String docLine) 
       throws ParserConfigurationException, SAXException, IOException {
-    DocumentBuilder dbld = mDocBuildFact.newDocumentBuilder();
+    DocumentBuilder dbld = 
+              DocumentBuilderFactory.newInstance().newDocumentBuilder();
 
     String xml = String.format(
         "<?xml version=\"%s\"  encoding=\"%s\" ?>%s",

@@ -19,16 +19,30 @@ import java.io.*;
 import java.util.zip.*;
 
 import org.apache.tools.bzip2.CBZip2InputStream;
-import org.apache.tools.bzip2.CBZip2OutputStream;
 
 /**
- *   Creates an input stream from a potentially compressed file;
+ *   Creates an input/output stream for a potentially compressed file;
  *   Determines a compression format by file extension.
- *   Supported for reading: .gz & bz2
- *   Supported for writing: only .gz
+ *   <p>
+ *   Supports the following formats:
+ *   </p>
+ *   <ul>
+ *   <li>For reading: .gz & bz2
+ *   <li>For writing: only .gz
+ *   </ul>
  *
  */
 public class CompressUtils {
+  /**
+   * Creates an input stream to read from a regular or compressed file.
+   * 
+   * @param fileName a file name with an extension (.gz or .bz2) or without it;
+   *                   if the user specifies an extension .gz or .bz2,
+   *                   we assume that the input
+   *                   file is compressed.
+   * @return an input stream to read from the file. 
+   * @throws IOException
+   */
   public static InputStream createInputStream(String fileName) throws IOException {
     InputStream finp = new FileInputStream(fileName);
     if (fileName.endsWith(".gz")) return new GZIPInputStream(finp);
@@ -40,6 +54,15 @@ public class CompressUtils {
     return finp;
   }
   
+  /**
+   * Creates an output stream to write to a regular or compressed file.
+   * 
+   * @param fileName    a file name with an extension .gz or without it;
+   *                    if the user specifies an extension .gz, we assume
+   *                    that the output file should be compressed.
+   * @return an output stream to write to a file.
+   * @throws IOException
+   */
   public static OutputStream createOutputStream(String fileName) throws IOException {
     OutputStream foutp = new FileOutputStream(fileName);
     if (fileName.endsWith(".gz")) return new GZIPOutputStream(foutp);

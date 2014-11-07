@@ -153,6 +153,10 @@ public class UtilConst {
   
   public static final String USER_AGENT = "Mozilla/4.0";
   
+  /** These are all ASCII punctuation chars except the apostrophe! */
+  public static final String NON_INDEXABLE_PUNCT = 
+                                    "!\"#$%&()*+,-./:;<=>?@\\[\\]^_`{¦}~\\\\";
+  
   public static String preparePayloadToken(String annotText) {
     return PATTERN_PREPARE_PAYLOAD.matcher(annotText).replaceAll(" ").
                                       // Stanford morphology chokes on '_'!

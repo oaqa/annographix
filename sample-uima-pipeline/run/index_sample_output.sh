@@ -5,4 +5,4 @@ if [ "$uri" = "" ] ; then
   exit 1
 fi
 
-../solr-apps/run/solr_indexer.sh output/text.txt.gz output/annot_offsets.tsv.gz  $uri text annot 100
+../apps/run/solr_indexer.sh output/text.txt.gz output/annot_offsets.tsv.gz  $uri text annot 100

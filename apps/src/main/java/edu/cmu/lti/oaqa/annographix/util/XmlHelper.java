@@ -38,7 +38,15 @@ import org.xml.sax.SAXException;
 import edu.cmu.lti.oaqa.annographix.solr.UtilConst;
 
 /**
- * A bunch of useful functions to work with XML files.
+ * A bunch of useful functions to work with XML files. In particular,
+ * with XML files that store data for indexable fields. 
+ * 
+ * <p>Two notable XML formats:
+ * <ul>
+ * <li>A generic simple two-level XML (DOC -> FIELD_NAME -> FIELD_CONTENT);
+ * <li>A more complex, more deeply nested, AQUAINT format, which we call
+ * a three-level format. See {@link #parseXMLAQUAINTEntry(String)} for details.
+ * </ul>
  * 
  * @author Leonid Boytsov
  *
@@ -93,9 +101,9 @@ public class XmlHelper {
   /**
    * Generates an entry that can be consumed by indexing applications.
    * 
-   * @param fields      a map, where a keys is an indexable field name,
-   *                    while a value represents field content.
-   * @return an entry in a pseudo-XML (namely XML without declaration) format.
+   * @param fields  (key, value) pairs; key is a field name, value is a text of the field.
+   * 
+   * @return an entry in a two-level pseudo-XML (namely XML without declaration) format.
    * 
    * @throws ParserConfigurationException
    * @throws TransformerException
@@ -159,11 +167,11 @@ public class XmlHelper {
     HashMap<String, String> res = new HashMap<String,String>();
  
     
-    Document doc = parseDocument(text);
+    Document doc = parseDocWithoutXMLDecl(text);
     
     Node root = XmlHelper.getNode(UtilConst.INDEX_DOC_ENTRY, doc.getChildNodes());
     if (root == null) {
-      System.err.println("Parsing error, offending document:\n" + text);
+      System.err.println("Parsing error, offending document:" + NL + text);
       throw new Exception("No " + UtilConst.INDEX_DOC_ENTRY);
     }  
 
@@ -206,7 +214,7 @@ public class XmlHelper {
     boolean foundEnd = false;
 
     do {
-      docBuffer.append(docLine); docBuffer.append('\n');
+      docBuffer.append(docLine); docBuffer.append(NL);
       if (docLine.trim().endsWith(CLOSING_TAG)) {
         foundEnd = true;
         break;        
@@ -218,8 +226,8 @@ public class XmlHelper {
   }
   
   /**
-   *  Parses a more complex (3-level) entry in the AQUAINT format.
-   *  We extract all 2-d level fields, plus only one (TEXT) 3-d level field.
+   *  Parses a more complex (two-level) entry in the AQUAINT format.
+   *  We extract all 2d level fields, plus only one (TEXT) 3d level field.
    *  
    *  @param docText     a textual representation of the AQUAINT XML entry.
    *  
@@ -232,11 +240,11 @@ public class XmlHelper {
      
     TransformerFactory transformerFactory = TransformerFactory.newInstance();
     Transformer transformer = transformerFactory.newTransformer();  
-    Document doc = parseDocument(docText);
+    Document doc = parseDocWithoutXMLDecl(docText);
     
     Node root = XmlHelper.getNode(UtilConst.INDEX_DOC_ENTRY, doc.getChildNodes());
     if (root == null) {
-      System.err.println("Parsing error, offending document:\n" + docText);
+      System.err.println("Parsing error, offending document:" + NL + docText);
       throw new Exception("No " + UtilConst.INDEX_DOC_ENTRY);
     }  
 
@@ -282,7 +290,7 @@ public class XmlHelper {
   }
       
   /**
-   * Parse an XML document represented by a string.
+   * Parses an XML document that comes without an XML declaration.
    * 
    * @param docLine a textual representation of XML document.
    * @return an object of the type {@link org.w3c.dom.Document}.
@@ -290,16 +298,30 @@ public class XmlHelper {
    * @throws SAXException
    * @throws IOException
    */
-  public Document parseDocument(String docLine) 
+  public static Document parseDocWithoutXMLDecl(String docLine) 
       throws ParserConfigurationException, SAXException, IOException {
-    DocumentBuilder dbld = 
-              DocumentBuilderFactory.newInstance().newDocumentBuilder();
-
     String xml = String.format(
         "<?xml version=\"%s\"  encoding=\"%s\" ?>%s",
         UtilConst.XML_VERSION, UtilConst.ENCODING_NAME, docLine);
-   
-    return dbld.parse(new InputSource(new StringReader(xml)));
+    return parseDocument(xml);
+
   }
- 
+  
+  /**
+   * A wrapper function to parse XML represented by a string.
+   * 
+   * @param docText     a textual representation of an XML document.
+   * @return an object of the type {@link org.w3c.dom.Document}.
+   * @throws ParserConfigurationException
+   * @throws SAXException
+   * @throws IOException
+   */
+  public static Document parseDocument(String docText) 
+      throws ParserConfigurationException, SAXException, IOException {
+    DocumentBuilder dbld = 
+        DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    return dbld.parse(new InputSource(new StringReader(docText)));
+  }  
+
+  private final static String NL = System.getProperty("line.separator");
 }

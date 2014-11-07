@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package edu.cmu.lti.oaqa.annographix.apps;
+package edu.cmu.lti.oaqa.annographix.solr;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -78,21 +78,21 @@ public class DocumentReader {
       try {
         docFields = xmlHlp.parseXMLIndexEntry(docText);
       } catch (SAXException e) {
-        System.err.println("Parsing error, offending DOC:\n" + docText);
+        System.err.println("Parsing error, offending DOC:" + NL + docText);
         throw new Exception("Parsing error.");
       }
 
       String docText4Anot = docFields.get(textFieldName); 
           
       if (docText4Anot == null) {
-        System.err.println("Parsing error, offending DOC:\n" + docText);
+        System.err.println("Parsing error, offending DOC:" + NL + docText);
         throw new Exception("Can't find the field: '" + docText4Anot + "'");
       }
       
       String docno = docFields.get(UtilConst.INDEX_DOCNO);
       
       if (docno == null) {
-        System.err.println("Parsing error, offending DOC:\n" + docText);
+        System.err.println("Parsing error, offending DOC:" + NL + docText);
         throw new Exception("Can't find the field: '" + 
                             UtilConst.INDEX_DOCNO + "'");
       }
@@ -159,5 +159,5 @@ public class DocumentReader {
     inpAnnot.close();
     inpText.close();
   }
-
+  private final static String NL = System.getProperty("line.separator");
 }

@@ -15,7 +15,7 @@
 
     <modules>
         <module>solr-plugin</module>
-        <module>solr-apps</module>
+        <module>apps</module>
         <module>sample-uima-pipeline</module>
     </modules>
 

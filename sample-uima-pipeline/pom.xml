@@ -20,7 +20,7 @@
         </dependency>
         <dependency>
           <groupId>edu.cmu.lti.oaqa.annographix</groupId>
-          <artifactId>solr-apps</artifactId>
+          <artifactId>apps</artifactId>
           <version>3.0-SNAPSHOT</version>
         </dependency>
 

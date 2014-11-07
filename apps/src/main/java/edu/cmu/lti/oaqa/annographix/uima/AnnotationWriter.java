@@ -398,7 +398,7 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
   private void writeText(String documentText) 
                          throws ParserConfigurationException, TransformerException, IOException {
     mTextFileWriter.write(documentText);
-    mTextFileWriter.write('\n');
+    mTextFileWriter.write(NL);
   }
 
   /**
@@ -420,7 +420,7 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
     annotFileWriter.write(elem.mTagValue            + "\t");
     annotFileWriter.write(elem.mParentId            + "\t");
     annotFileWriter.write(UtilConst.PATTERN_WHITESPACE.matcher(elem.mTextValue).
-                          replaceAll(" ") + "\n");
+                          replaceAll(" ") + NL);
   }
 
  /**
@@ -511,6 +511,8 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
     
     return new FilePair(outFile, fileWriter);
   }   
+
+  private final static String NL = System.getProperty("line.separator");
 }
 
 

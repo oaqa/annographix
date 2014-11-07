@@ -13,10 +13,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package edu.cmu.lti.oaqa.annographix.apps;
+package edu.cmu.lti.oaqa.annographix.solr;
 
 import java.io.StringWriter;
-
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -62,7 +61,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
     mDocBuilder           = mDocFactory.newDocumentBuilder();
     mTransformerFactory   = TransformerFactory.newInstance();
     mTransformer          = mTransformerFactory.newTransformer();
-    mTargetServer         = new SolrUtils(solrURI);
+    mTargetServer         = new SolrServerWrapper(solrURI);
   }
 
 
@@ -71,8 +70,8 @@ public class SolrDocumentIndexer implements DocumentIndexer {
    * The function indexes provided SOLR documents. It assumes that
    * annotations have the same document no/id and are sorted.
    * 
-   * @param docFields   Pairs: (field name, field text).
-   * @param annots      The list of annotations for the annotated field.
+   * @param docFields   (key, value) pairs; key is a field name, value is a text of the field.
+   * @param annots      the list of annotations for the annotated field.
    * 
    * @throws Exception 
    * 
@@ -81,7 +80,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
                               AnnotationEntry[]  annots) 
                               throws Exception{  
     /*
-     * Check if the array annots is valid:
+     * Check if the annotation entries' array is valid:
      * 1) Annotations should be sorted.
      * 2) She should all represent the same document number.
      */
@@ -134,7 +133,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
     
     addField(oneDoc, UtilConst.ID_FIELD, docNo);
     /*
-     * It will be the Solr responsibility to stem the words
+     * It will be the SOLR responsibility to stem the words
      * properly. Here, we will only stem keywords stored with
      * annotations.
      */
@@ -169,7 +168,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
           e.mStartChar,
           e.mStartChar + e.mCharLen,
           /*
-           *  Let's hardwire lowercasing of annotation labels,
+           *  Let's enforce lowercasing of annotation labels,
            *  we do the same in a query plugin. 
            */
           annotLabel.toLowerCase()
@@ -275,7 +274,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
   private TransformerFactory      mTransformerFactory;
   private Transformer             mTransformer;
   
-  private SolrUtils               mTargetServer;
+  private SolrServerWrapper               mTargetServer;
   private Document                mBatchXML = null;
   private Element                 mAddNode = null;
 }

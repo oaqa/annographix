@@ -24,6 +24,14 @@ import java.net.URL;
 import edu.cmu.lti.oaqa.annographix.solr.UtilConst;
 
 public class HttpHelper {
+  /**
+   * Retrieves a page with a given URI.
+   * 
+   * @param uri a page URI
+   * @return a page textual content.
+   * 
+   * @throws Exception
+   */
   public static String get(String uri) throws Exception {
     URL obj = new URL(uri);
     HttpURLConnection con = (HttpURLConnection) obj.openConnection();
@@ -45,10 +53,12 @@ public class HttpHelper {
  
     while ((respLine = in.readLine()) != null) {
       resp.append(respLine);
+      resp.append(NL);
     }
     
     in.close();
     
     return resp.toString();    
   }  
+  private final static String NL = System.getProperty("line.separator");
 }

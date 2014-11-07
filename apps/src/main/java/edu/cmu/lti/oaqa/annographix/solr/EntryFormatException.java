@@ -1,4 +1,4 @@
-package edu.cmu.lti.oaqa.annographix.apps;
+package edu.cmu.lti.oaqa.annographix.solr;
 
 public class EntryFormatException extends Exception {
 

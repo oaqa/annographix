@@ -19,7 +19,6 @@ package edu.cmu.lti.oaqa.annographix.uima;
 import java.io.*;
 import java.util.*;
 
-
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
@@ -27,41 +26,11 @@ import org.apache.uima.UimaContext;
 import org.apache.uima.analysis_component.CasAnnotator_ImplBase;
 import org.apache.uima.analysis_engine.AnalysisEngineProcessException;
 import org.apache.uima.jcas.JCas;
-import org.apache.uima.jcas.tcas.Annotation;
-import org.apache.uima.cas.*;
 import org.apache.uima.resource.ResourceInitializationException;
-import org.apache.uima.util.Level;
 
-import org.apache.commons.io.FileUtils;
+import edu.cmu.lti.oaqa.annographix.solr.*;
+import edu.cmu.lti.oaqa.annographix.util.*;
 
-import edu.cmu.lti.oaqa.annographix.solr.UtilConst;
-import edu.cmu.lti.oaqa.annographix.util.CompressUtils;
-import edu.cmu.lti.oaqa.annographix.util.XmlHelper;
-
-class OneAnnotationData { 
-    public OneAnnotationData(int id, 
-                          String fieldName, 
-                          int     start, 
-                          int     end,
-                          int     tagValue, 
-                          int     parentId, 
-                          String  textValue) {
-    this.mId = id;
-    this.mFieldName = fieldName;
-    this.mStart = start;
-    this.mEnd = end;
-    this.mTagValue = tagValue;
-    this.mParentId = parentId;
-    this.mTextValue = textValue;
-  }
-    public int       mId;
-    public String    mFieldName;
-    public int       mStart;
-    public int       mEnd;
-    public int       mTagValue;
-    public int       mParentId;
-    public String    mTextValue;
-}
 /**
  * <p>
  * This class is essentially a CAS consumer that extracts annotations 
@@ -79,23 +48,10 @@ class OneAnnotationData {
  * 
  * @author Leonid Boytsov
  */
-public class AnnotationWriter extends CasAnnotator_ImplBase {
-  /** 
-   * A parameter to specify an annotation mapping file. 
-   * This file defines which annotations and which annotation
-   * attributes should be stored. The annotation mapping file
-   * also specifies which parent-child links should be memorized. 
-   */
-  public static final String PARAM_MAPPING_FILE = "mapping_file";
-
-  /** Result of parsing the annotation mapping file. */
-  private Map<String, MappingReader.TypeDescr> mMappingConfig;
-
+public class AnnotationWriter extends AnnotationConsumer {
   private BufferedWriter  mTextFileWriter; 
   private BufferedWriter  annotFileWriter; 
 
-  /** A view (SOFA) name to be used to extract annotations */
-  private String          mViewName;
   /** 
    * A name of the field (also the name of the tag in the XML file)
    * that keeps annotated text (but not the annotations themselves).
@@ -103,40 +59,12 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
   private String          mTextFieldName;
   
   /**
-   * <p>
-   * This class members provides unique IDs within a single annotating thread only.
-   * It is not a problem for annographix (b/c it cares only about uniqueness
-   * of annotation IDs within a single document), but will be problematic
-   * if generate several annotation files in parallel and fed them to Indri.
-   * Indri doesn't tolerate non-unique annotation IDs.
-   * </p>
-   * 
-   * <p>
-   * <b>NOTE:</b> annotation IDs must start with 1, b/c 0 is used to
-   * denote a missing parent annotation.
-   * </p>
-   */
-  private int mAnnotationId = 1; 
-
-  /**
    * See {@link CasAnnotator_ImplBase#initialize(UimaContext)}.
    */
   @Override
   public void initialize(UimaContext context) throws ResourceInitializationException {
     super.initialize(context);
-    
-    /* 
-     * A view name can be optional.
-     */
-    mViewName = 
-          (String) context.getConfigParameterValue(UtilConst.CONFIG_VIEW_NAME);
- 
-    if (mViewName == null)
-      throw new ResourceInitializationException(
-                    new Exception("Missing parameter: " + 
-                                  UtilConst.CONFIG_VIEW_NAME));   
-     
-    
+             
     mTextFieldName = (String) 
               context.getConfigParameterValue(UtilConst.CONFIG_TEXT4ANNOT_FIELD);
     
@@ -146,101 +74,29 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
                                   UtilConst.CONFIG_TEXT4ANNOT_FIELD));   
     
     
-    FilePair pTxt = InitOutFile(context, "out_text_file");
+    OutputStream textFileOut = InitOutFile(context, "out_text_file");
 
-    mTextFileWriter = new BufferedWriter(new OutputStreamWriter(pTxt.fw));
+    mTextFileWriter = new BufferedWriter(new OutputStreamWriter(textFileOut));
  
-    FilePair pAnnot = InitOutFile(context, "out_annot_file");
+    OutputStream annotFileOut = InitOutFile(context, "out_annot_file");
 
-    annotFileWriter = new BufferedWriter(new OutputStreamWriter(pAnnot.fw));
+    annotFileWriter = new BufferedWriter(new OutputStreamWriter(annotFileOut));
     
-    /* create the mapping configuration */
-    MappingReader fieldMappingReader = new MappingReader();
-    String mappingFileParam = 
-                    (String)context.getConfigParameterValue(PARAM_MAPPING_FILE);
-    
-    if (mappingFileParam == null) {
-      throw new ResourceInitializationException(
-          new Exception("Missing parameter: " + PARAM_MAPPING_FILE)
-      );
-    }
-    
-    try{
-      mMappingConfig = fieldMappingReader.getConf(new FileInputStream(mappingFileParam));
-    } catch (Exception e) {
-      context.getLogger().log(Level.SEVERE, "Unable to initialize mapping configuration properly");
-      throw new ResourceInitializationException(e);
-    }
   }
   
-  /**
-   * Here we check that the user specified correct names of types and attributes.   
-   */
   @Override
-  public void typeSystemInit(TypeSystem typeSystem) throws AnalysisEngineProcessException {
-    super.typeSystemInit(typeSystem);
-    for (String key : mMappingConfig.keySet()) {
-      // 1. Check if the type exists
-      Type type = typeSystem.getType(key);
-      if (type==null) {
-        throw new AnalysisEngineProcessException(
-                    new Exception(String.format(
-                         "Annotation mapping file: Specified type '%s' does not exist", key
-                                               )
-                                  ));
-      }
-      
-      MappingReader.TypeDescr desc = mMappingConfig.get(key);
-      // 2. Check if the type attribute exists
-      String attr = desc.valueAttr;
-      if (attr != null // value attribute can be null
-          && type.getFeatureByBaseName(attr)==null) {
-        throw new AnalysisEngineProcessException(
-            new Exception(String.format(
-                "Annotation mapping file: attribute '%s' of the type type '%s' does not exist", 
-                                       attr, key)
-                          ));
-      }
-      
-      // 3. If we have a parent, let's check that the attribute also exists
-      if ((attr = desc.parentAttr) !=  null)  {
-        if (type.getFeatureByBaseName(attr)==null) {
-          throw new AnalysisEngineProcessException(
-              new Exception(String.format(
-                  "Annotation mapping file: attribute '%s' of the type type '%s' does not exist", 
-                                         attr, key)
-                           ));        
-        }
-      }
-    }
-  }
-
-  /**
-   * Main CAS processing function, see {@link CasAnnotator_ImplBase#process(CAS)}.
-   */
-  @Override
-  public void process(CAS aCAS) throws AnalysisEngineProcessException {
-    JCas jcas = null;
-    
-    try {
-        jcas = aCAS.getJCas();
-    } catch (CASException e) {
-        throw new AnalysisEngineProcessException(e);
-    }
-        
+  protected void doProcess(String docText, JCas jcas, JCas viewJCas) 
+                                        throws AnalysisEngineProcessException {
     XmlHelper xmlHlp = new XmlHelper();
 
     try {      
-      // mViewName != null
-      JCas viewJCas = jcas.getView(mViewName);
 
-      
-      
+            
       /*
-       *  Let's make a sanity check here, even though it's a bit expensive:
+       *  Let's make a sanity check here, even though it comes at a small
+       *  additional cost:
        *  The text in the view should match the text in the annotation field.
        */
-      String docText = aCAS.getDocumentText();
       Map<String, String> docFields = xmlHlp.parseXMLIndexEntry(docText);
       
       String docNo = docFields.get(UtilConst.INDEX_DOCNO);
@@ -257,27 +113,23 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
       String jcasText = viewJCas.getDocumentText();
       
       if (annotText.compareTo(jcasText) != 0) {
-        FileUtils.writeStringToFile(new File("cas.txt"), docText, null);
-        FileUtils.writeStringToFile(new File("jcasview.txt"), jcasText, null);
-        FileUtils.writeStringToFile(new File("annot.txt"), annotText, null);    
-
         throw new Exception(String.format(
                     "Non-matching annotation texts for docNo: %s " + 
                     " view name: %s " + 
                     "text length: %d jcasView text length: %d ", 
-                    docNo, mViewName, annotText.length(), jcasText.length()));        
+                    docNo, getViewName(), annotText.length(), jcasText.length()));        
       }
 
       writeText(docText);
       writeAnnotations(docNo, viewJCas);
     } catch (Exception e) {
       throw new AnalysisEngineProcessException(e);
-    }
-    
+    }    
   }
 
   /**
-   * A helper function that extracts annotations from CAS and stores them.
+   * A helper function that extracts annotations from a 
+   * {@link org.apache.uima.jcas.JCAS} object and stores them.
    * 
    * @param     docId   a unique document ID.
    * @param     jcas    a {@link org.apache.uima.jcas.JCAS} interface to the CAS.
@@ -286,111 +138,15 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
    */
   private void writeAnnotations(String docId, JCas jcas) 
                                 throws AnalysisEngineProcessException {    
-    // First obtain unique annotation IDs
-     
-     Map<Annotation,Integer>  annotIds = new HashMap<Annotation,Integer>();
-     
-     FSIterator<Annotation> iter = 
-                         jcas.getAnnotationIndex(Annotation.type).iterator();
-     
-     while (iter.hasNext()) {
-       Annotation elem = iter.next();           
-       annotIds.put(elem, mAnnotationId++);
-     }
-
-     // Now, we make a second pass and serialize annotations
-     HashSet<Integer>               writtenIds = new HashSet<Integer>(); 
-     ArrayList<OneAnnotationData>   annotList = new ArrayList<OneAnnotationData>();
-
-     for (String key : mMappingConfig.keySet()) {
-       Type                      type = jcas.getTypeSystem().getType(key);
-       MappingReader.TypeDescr   desc = mMappingConfig.get(key); 
-       
-       iter = jcas.getAnnotationIndex(type).iterator();
-
-       while (iter.hasNext()) { 
-         Annotation elem   = iter.next();
-         
-         String  tagValue = "";
-         if (desc.valueAttr != null) {
-           Feature feature = type.getFeatureByBaseName(desc.valueAttr);
-           tagValue = elem.getFeatureValueAsString(feature);
-         }
-         
-         int parentId = 0;
-         
-         if (desc.parentAttr != null) {
-           
-           FeatureStructure parent = (Annotation) 
-                 elem.getFeatureValue(type.getFeatureByBaseName(desc.parentAttr)); 
-               
-           if (parent != null) parentId = annotIds.get((Annotation)parent);
-         }
-         
-
-         annotList.add(new OneAnnotationData(annotIds.get(elem), 
-                         UtilConst.combineFieldValue(
-                             desc.fieldPrefix, tagValue),
-                         elem.getBegin(), elem.getEnd(),
-                         0,
-                         parentId,
-                         elem.getCoveredText()));
+     for (AnnotationProxy elem : generateAnnotations(jcas)) {
+       try {
+         writeOneAnnotation(docId, elem);
+       } catch (IOException e) {
+         throw new AnalysisEngineProcessException(e);
        }
      }
-     
-     try {
-       int qty = annotList.size();
-       
-       boolean annotWritten[] = new boolean[qty]; 
-           
-       /*
-        * This is to ensure that parentIds are 
-        * written always before the child entries
-        * that references their parents
-        * 
-        * TODO: implement a more efficient version for complex graph structure.
-        * 
-        * This algorithm is not the most efficient one.
-        * Yet, it is complexity is O(qty * maximum length of the directed path),
-        * which in many cases will be close to O(qty),
-        * because the maximum length of the directed path in a annotation graph
-        * is expected to be small.
-        * 
-        */
-       int     writtenQty = 0;
-       
-       while (true) {
-         boolean bChanged = false;
-
-         
-         for (int i = 0; i < qty; ++i) 
-         if (!annotWritten[i]) {
-           OneAnnotationData elem = annotList.get(i);
-           
-           if (elem.mParentId == 0 || writtenIds.contains(elem.mParentId)) {
-             bChanged = true;
-             writeOneAnnotation(docId, elem);
-             annotWritten[i] = true;
-             writtenIds.add(elem.mId);
-             ++writtenQty;
-           }           
-         }
-         
-         if (!bChanged) {
-           if (writtenQty < qty) {
-             throw new AnalysisEngineProcessException(new
-               Exception("Annotation graph has loops, docId = " + docId + 
-                        " wrote " + qty + " out of " + writtenQty));
-           }
-           break;
-         }
-       }
-     } catch (IOException e) {
-       throw new AnalysisEngineProcessException(e);
-     }
-  
   }
-
+  
   /**
    * Writes a text of the document that is already properly
    * formatted (i.e., has Indri TEXTTREC format).
@@ -405,44 +161,30 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
    * Saves on annotation in the annotation offset file.
    * 
    * @param     docNo       unique document identifier.
-   * @param     elem        an object of the type {@link OneAnnotationData} that
+   * @param     elem        an object of the type {@link AnnotationProxy} that
    *                        keeps annotation-related data.
    * @throws IOException
    */
   private void writeOneAnnotation(String docNo, 
-                                  OneAnnotationData elem) throws IOException {
+                                  AnnotationProxy elem) throws IOException {
     annotFileWriter.write(docNo                     + "\t");
-    annotFileWriter.write("TAG\t");
+    annotFileWriter.write("TAG\t"); // Indri'specific
     annotFileWriter.write(elem.mId                  + "\t");
-    annotFileWriter.write(elem.mFieldName           + "\t");
+    annotFileWriter.write(elem.mLabel               + "\t");
     annotFileWriter.write(elem.mStart               + "\t");
     annotFileWriter.write((elem.mEnd - elem.mStart) + "\t");
-    annotFileWriter.write(elem.mTagValue            + "\t");
+    annotFileWriter.write("0\t"); // Indri'specific
     annotFileWriter.write(elem.mParentId            + "\t");
-    annotFileWriter.write(UtilConst.PATTERN_WHITESPACE.matcher(elem.mTextValue).
+    annotFileWriter.write(UtilConst.PATTERN_WHITESPACE.matcher(elem.mText).
                           replaceAll(" ") + NL);
   }
 
  /**
-  * Called after we processed the entire collection, we close the 
-  * output files here, see
-  * also {@link CasAnnotator_ImplBase#collectionProcessComplete()}.
-  */
-  @Override
-  public void collectionProcessComplete() throws AnalysisEngineProcessException {
-    try {
-      closeOutputFiles();
-    } catch (IOException e) {
-      throw new AnalysisEngineProcessException(e);
-    }
-  }
-
-  /**
    * Closes output files.
    * 
    * @throws IOException
    */
-  private void closeOutputFiles() throws IOException {
+  protected void cleanUp() throws IOException {
     if (annotFileWriter != null) {
       annotFileWriter.close();
     }
@@ -452,37 +194,14 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
   }
 
  /**
-  * Some clean up in the case of an emergency exit, see also
-  * {@link org.apache.uima.resource.Resource#destroy()}.
-  */
-  public void destroy() {
-    try {
-      closeOutputFiles();
-    } catch (IOException e) {
-        // ignore IOException on destroy
-    }
-  }
-    
-  /**
-   * A helper class to store the result of opening a file for writing, 
-   * which comes as two related objects of the types File and OutputStream.
-   */
-  private class FilePair {
-    public File         f;
-    public OutputStream fw;
-
-    public FilePair(File _f, OutputStream _fw) { f = _f; fw = _fw; } 
-  }; 
-
-  /**
    * Opens file for writing.
    * 
    * @param context             UIMA context variable.
    * @param fileParamName       A file name.
-   * @return                    A an instance of the class {@link FilePair}.
+   * @return                    A an output stream.
    * @throws ResourceInitializationException
    */
-  private FilePair InitOutFile(UimaContext context, 
+  private OutputStream InitOutFile(UimaContext context, 
                                String fileParamName) throws ResourceInitializationException {
     // extract configuration parameter settings
     String oFileName = (String) context.getConfigParameterValue(fileParamName);
@@ -509,10 +228,7 @@ public class AnnotationWriter extends CasAnnotator_ImplBase {
         throw new ResourceInitializationException(e);
     }
     
-    return new FilePair(outFile, fileWriter);
-  }   
-
-  private final static String NL = System.getProperty("line.separator");
+    return fileWriter;
+  }
 }
-
 

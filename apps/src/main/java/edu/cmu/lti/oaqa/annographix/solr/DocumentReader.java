@@ -62,7 +62,7 @@ public class DocumentReader {
     BufferedReader  inpAnnot = new BufferedReader(
         new InputStreamReader(CompressUtils.createInputStream(docAnnotFile)));
     
-    AnnotationEntry prevEntry = null;
+    OffsetAnnotationFileEntry prevEntry = null;
     
     String docText = XmlHelper.readNextXMLIndexEntry(inpText);
     
@@ -99,7 +99,7 @@ public class DocumentReader {
 
       
       // 2. Read document annotations
-      ArrayList<AnnotationEntry> annotList = new ArrayList<AnnotationEntry>();
+      ArrayList<OffsetAnnotationFileEntry> annotList = new ArrayList<OffsetAnnotationFileEntry>();
       
       
       while (prevEntry == null || prevEntry.mDocNo.equals(docno)) {
@@ -110,7 +110,7 @@ public class DocumentReader {
           if (null == annotLine) break;
           
           try {
-            prevEntry = AnnotationEntry.parseLine(annotLine);
+            prevEntry = OffsetAnnotationFileEntry.parseLine(annotLine);
           } catch (NumberFormatException e) {
             throw new Exception("Failed to parse annotation line: '" 
                                   + annotLine + "', exception: " + e);
@@ -144,7 +144,7 @@ public class DocumentReader {
        *  3. pass a parsed document + annotation to the indexer
        */
       
-      AnnotationEntry[] annots = new AnnotationEntry[annotList.size()];
+      OffsetAnnotationFileEntry[] annots = new OffsetAnnotationFileEntry[annotList.size()];
       for (int i = 0; i < annots.length; ++i)
         annots[i] = annotList.get(i);
       // we must short annotations

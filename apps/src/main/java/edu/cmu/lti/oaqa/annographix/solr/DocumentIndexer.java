@@ -35,7 +35,7 @@ public interface DocumentIndexer {
    */
   void consumeDocument(
                        Map<String, String> docFields,
-                       AnnotationEntry[] annots) throws Exception;
+                       OffsetAnnotationFileEntry[] annots) throws Exception;
   void sendBatch() throws Exception;
 }
 

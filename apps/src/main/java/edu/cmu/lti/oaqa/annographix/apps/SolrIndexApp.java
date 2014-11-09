@@ -15,9 +15,6 @@
  */
 package edu.cmu.lti.oaqa.annographix.apps;
 
-import java.io.StringReader;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.CommandLine;
@@ -26,13 +23,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import edu.cmu.lti.oaqa.annographix.solr.*;
-import edu.cmu.lti.oaqa.annographix.util.XmlHelper;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
 
 /**
  * An application that reads text files produced by an annotation

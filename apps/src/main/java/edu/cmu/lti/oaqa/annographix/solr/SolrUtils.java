@@ -187,7 +187,7 @@ public class SolrUtils {
               for (int k = 0; k < attrs.getLength(); ++k) {
                 Node oneAttr = attrs.item(k);
                 if (!oneAttr.getNodeName().equalsIgnoreCase("class")) {
-                  tokDesc.mTokClassAttr.put(oneAttr.getNodeName(), oneAttr.getNodeValue());
+                  tokDesc.addArgument(oneAttr.getNodeName(), oneAttr.getNodeValue());
                 }
               }                 
               tmpRes.put(name, tokDesc);
@@ -330,8 +330,15 @@ public class SolrUtils {
     }
   }
 
+  /**
+   * A simple test function to check some util functions manually.
+   * 
+   * @param args    args[0] is a server URI, e.g., 
+   *                "http://localhost:8984/solr/AQUAINT"
+   * @throws Exception
+   */
   public static void main(String args[]) throws Exception {
-    String uri = "http://localhost:8984/solr/AQUAINT";
+    String uri = args[0];
     System.out.println(getSolrSchema(uri));
     System.out.println("===============");
     System.out.println(getSolrConfig(uri));
@@ -341,7 +348,7 @@ public class SolrUtils {
     Map<String, TokenizerParams> res = parseAndCheckConfig(uri, 
         UtilConst.DEFAULT_TEXT4ANNOT_FIELD, UtilConst.DEFAULT_ANNOT_FIELD);
     for (Map.Entry<String, TokenizerParams> e : res.entrySet()) {
-      String txt = e.getValue() != null ? e.getValue().mTokClassName : "NULL";
+      String txt = e.getValue() != null ? e.getValue().getTokClassName() : "NULL";
       System.out.println(e.getKey() + " -> " + txt);
     }
   }

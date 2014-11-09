@@ -77,7 +77,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
    * 
    */
   public void consumeDocument(Map<String, String> docFields,
-                              AnnotationEntry[]  annots) 
+                              OffsetAnnotationFileEntry[]  annots) 
                               throws Exception{  
     /*
      * Check if the annotation entries' array is valid:
@@ -86,7 +86,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
      */
  
     for  (int i = 1; i< annots.length; ++i) {
-      AnnotationEntry prevAnnot = annots[i-1],
+      OffsetAnnotationFileEntry prevAnnot = annots[i-1],
                       currAnnot = annots[i];
       if (!prevAnnot.mDocNo.equals(currAnnot.mDocNo)) {
         throw new Exception(String.format("Bug: docnos different, i=%d, prev='%s', curr='%s'",
@@ -152,7 +152,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
     // Create annotation representation
     StringBuilder annotString = new StringBuilder();
     
-    for (AnnotationEntry e: annots) {
+    for (OffsetAnnotationFileEntry e: annots) {
       // Replace potential occurrences of the payload char
       String annotLabel = UtilConst.removeBadUnicode(e.mLabel);
       
@@ -195,7 +195,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
    */
   private void createPayloadStr(
                              StringBuilder   annotString,
-                             AnnotationEntry e,
+                             OffsetAnnotationFileEntry e,
                              int      iStart,
                              int      iEnd,
                              String   annotLabel
@@ -274,7 +274,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
   private TransformerFactory      mTransformerFactory;
   private Transformer             mTransformer;
   
-  private SolrServerWrapper               mTargetServer;
+  private SolrServerWrapper       mTargetServer;
   private Document                mBatchXML = null;
   private Element                 mAddNode = null;
 }

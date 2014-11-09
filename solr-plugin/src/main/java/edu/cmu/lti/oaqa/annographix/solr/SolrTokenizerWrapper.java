@@ -52,7 +52,6 @@ public class SolrTokenizerWrapper {
    * a tokenizer ID corresponding to this short name. For example,
    * the ID for <b>solr.StandardTokenizerFactory</b> is <b>standard</b>. 
    * </p>
-   * 
    * <p>
    * Sadly, Leo couldn't find a standard an API function to obtain this
    * short tokenizer ID from a name specified in a configuration file.
@@ -62,10 +61,8 @@ public class SolrTokenizerWrapper {
    * future Lucene/SOLR versions), one can specify the full class name 
    * in the SOLR schema file. However, it seems to be working fine
    * with Standard SOLR tokenizer factories.
+   * </p>
    * <p>
-   * 
-   * <p>
-   *
    * For instance, instead of <br>
    * &lt;tokenizer class="solr.StandardTokenizerFactory" maxTokenLength="255"/&gt;<br>
    * one can explicitly specify the full class name:<br>
@@ -86,7 +83,7 @@ public class SolrTokenizerWrapper {
    * @throws IllegalAccessException 
    * @throws InstantiationException 
    */
-  SolrTokenizerWrapper(TokenizerParams params) 
+  public SolrTokenizerWrapper(TokenizerParams params) 
                            throws InstantiationException, 
                                    IllegalAccessException, 
                                    IllegalArgumentException, 
@@ -107,7 +104,7 @@ public class SolrTokenizerWrapper {
         
       tokClassName = tokClassName.substring(SHORT_NAME_PREFIX.length());
       tokClassName = tokClassName.substring(0, tokClassName.length() - 
-                                               SHORT_NAME_SUFFIX.length());
+                                            SHORT_NAME_SUFFIX.length());
       tokClassName = tokClassName.toLowerCase();
       
       mTokStreamFactory = 
@@ -117,8 +114,7 @@ public class SolrTokenizerWrapper {
       mTokStreamFactory = (TokenizerFactory)Class.forName(tokClassName)
               .asSubclass(TokenizerFactory.class).getConstructor(Map.class)
               .newInstance(tokClassArgs);
-    }
-        
+    }        
   }
   
   /**

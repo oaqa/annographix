@@ -11,8 +11,12 @@ public class StructRetrQParserVer3 extends QParser {
   float     mBoost = 1.0f;
   /** a current parser version */
   String    mVersion = "3";
-  /** A size (in the # of chars) of the window where we look for occurrences. */
-  Integer   mSpan = Integer.MAX_VALUE;
+  /** 
+   * A size (in the # of chars) of the window where we look for occurrences.
+   * For simplicity, we want to be the default value large, however, 
+   * too large a value will lead to an overflow. 
+   */
+  Integer   mSpan = Integer.MAX_VALUE / 8;
   /** a name of the text field that is annotated */
   String    mTextFieldName;
   /** a name of the field that stores annotations for the text field mTextFieldName */

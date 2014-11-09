@@ -227,11 +227,7 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
         viewJCas = jcas.getView(mViewName);
         
         String docText = aCAS.getDocumentText();
-        /*
-         *  Let's make a sanity check here, even though it comes at a small
-         *  additional cost:
-         *  The text in the view should match the text in the annotation field.
-         */
+
         Map<String, String> docFields = XmlHelper.parseXMLIndexEntry(docText);
         
         String docNo = docFields.get(UtilConst.INDEX_DOCNO);
@@ -239,22 +235,6 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
           throw new Exception("Missing field: " + UtilConst.INDEX_DOCNO);
         }            
         
-        String annotText = docFields.get(mTextFieldName);
-        
-        if (annotText == null) {
-          throw new Exception("Missing field: " + mTextFieldName + 
-                              " docNo: " + docNo);
-        }
-        String jcasText = viewJCas.getDocumentText();
-        
-        if (annotText.compareTo(jcasText) != 0) {
-          throw new Exception(String.format(
-                      "Non-matching annotation texts for docNo: %s " + 
-                      " view name: %s " + 
-                      "text length: %d jcasView text length: %d ", 
-                      docNo, mViewName, annotText.length(), jcasText.length()));        
-        }
-
         doProcess(viewJCas, docNo, docText, docFields);
     } catch (Exception e) {
         throw new AnalysisEngineProcessException(e);
@@ -298,6 +278,9 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
   
        while (iter.hasNext()) { 
          Annotation elem   = iter.next();
+         
+         // We don't need this annotation now
+         if (!annotIds.containsKey(elem)) continue;
          
          String  labelValue = "";
          if (desc.valueAttr != null) {

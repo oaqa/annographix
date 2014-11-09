@@ -69,7 +69,6 @@ public class AnnotationWriter extends AnnotationConsumer {
   private BufferedWriter  mAnnotFileWriter;
   /** Indri-compatibility flag */ 
   private Boolean         mIndriFormat = false;
-
   
   /**
    * See {@link CasAnnotator_ImplBase#initialize(UimaContext)}.
@@ -101,7 +100,28 @@ public class AnnotationWriter extends AnnotationConsumer {
                            Map<String, String> docFields) 
                                         throws AnalysisEngineProcessException {
 
-    try {                  
+    try {
+      /*
+       *  Let's make a sanity check here, even though it comes at a small
+       *  additional cost:
+       *  The text in the view should match the text in the annotation field.
+       */
+      String annotText = docFields.get(mTextFieldName);
+      
+      if (annotText == null) {
+        throw new Exception("Missing field: " + mTextFieldName + 
+                            " docNo: " + docNo);
+      }
+      String jcasText = viewJCas.getDocumentText();
+      
+      if (annotText.compareTo(jcasText) != 0) {
+        throw new Exception(String.format(
+                    "Non-matching annotation texts for docNo: %s " + 
+                    " view name: %s " + 
+                    "text length: %d jcasView text length: %d ", 
+                    docNo, mViewName, annotText.length(), jcasText.length()));        
+      }
+      
       writeText(docText);
       writeAnnotations(docNo, viewJCas);
     } catch (Exception e) {

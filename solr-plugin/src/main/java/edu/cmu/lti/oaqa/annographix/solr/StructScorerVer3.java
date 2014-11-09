@@ -50,7 +50,7 @@ public class StructScorerVer3 extends Scorer {
   private SimScorer mDocScorerTextField; 
   private SimScorer mDocScorerAnnotField;
   private int       mCurrDocId = -1;
-  private int       mSpan = Integer.MAX_VALUE;
+  private int       mSpan;
   private int       mNumMatches = 0;
   
   /** 

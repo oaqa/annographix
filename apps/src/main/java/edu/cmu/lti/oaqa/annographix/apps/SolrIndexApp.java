@@ -26,7 +26,7 @@ import edu.cmu.lti.oaqa.annographix.solr.*;
 
 /**
  * An application that reads text files produced by an annotation
- * pipeline and indexes their content using Solr.
+ * pipeline and indexes their content using SOLR.
  * <p>
  * The first text file contains documents. The document
  * text is enclosed between tags <DOC></DOC> and occupies

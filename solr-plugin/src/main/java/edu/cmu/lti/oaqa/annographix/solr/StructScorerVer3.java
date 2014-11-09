@@ -185,7 +185,9 @@ public class StructScorerVer3 extends Scorer {
     /*
      *  Let's create a span iterator. It is defined by either
      *  a covering span or by a maximum span lengths. A combination
-     *  of these different methods is not supported.
+     *  of these different methods is not supported. If the covering
+     *  annotation is specified, this method takes precedence over
+     *  explicit span length.
      */
     if (mCoverAnnotPost != null) {
       mTermSpanIterator = 

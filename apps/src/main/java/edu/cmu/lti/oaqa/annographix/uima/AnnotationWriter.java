@@ -91,7 +91,7 @@ public class AnnotationWriter extends AnnotationConsumer {
   }
   
   /**
-   *  See {@link AnnotationConsumer.doProcess(JCas, String, String, Map)}
+   *  See {@link #AnnotationConsumer.doProcess(JCas, String, String, Map)}
    */
   @Override
   protected void doProcess(JCas viewJCas, 

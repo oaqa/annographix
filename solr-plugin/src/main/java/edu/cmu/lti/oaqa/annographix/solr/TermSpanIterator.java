@@ -39,7 +39,7 @@ package edu.cmu.lti.oaqa.annographix.solr;
 public abstract class TermSpanIterator {  
   /** a maximum number of forward iterations to carry out,
       before starting a full-blown exponential search. */
-  private static final int FORWARD_ITER_QTY = 5;
+  public static final int FORWARD_ITER_QTY = 5;
   /**
    * This function initiates span iterators. It should be called after 
    * fetching the information for the next document. It assumes that each 

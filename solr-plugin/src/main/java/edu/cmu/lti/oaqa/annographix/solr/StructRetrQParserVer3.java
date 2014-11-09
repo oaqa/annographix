@@ -1,5 +1,9 @@
 package edu.cmu.lti.oaqa.annographix.solr;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+
 import org.apache.lucene.search.Query;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.request.SolrQueryRequest;
@@ -30,6 +34,20 @@ public class StructRetrQParserVer3 extends QParser {
   public final static String PARAM_COVER_ANNOT = "cover_annot";
   public final static String PARAM_TEXT_FIELD = UtilConst.CONFIG_TEXT4ANNOT_FIELD;
   public final static String PARAM_ANNOT_FIELD = UtilConst.CONFIG_ANNOTATION_FIELD;
+  /** 
+   * This array <b>must</b> contain all parameter names, when a new parameter
+   * is introduced, its name must be added here. 
+   */
+  public final static String mValidParamNames[] = {PARAM_BOOST,
+                                                   PARAM_VERSION,
+                                                   PARAM_SPAN,
+                                                   PARAM_COVER_ANNOT,
+                                                   PARAM_TEXT_FIELD,
+                                                   PARAM_ANNOT_FIELD};
+  public final static HashSet<String> mParamNameDict = new HashSet<String>
+                                                    (Arrays.asList(mValidParamNames));
+  Iterator<String> mParamNameIter;
+  
   
   public StructRetrQParserVer3(String qstr, 
                             SolrParams localParams, 
@@ -54,15 +72,23 @@ public class StructRetrQParserVer3 extends QParser {
     
     mTextFieldName = localParams.get(PARAM_TEXT_FIELD, 
                                      UtilConst.DEFAULT_TEXT4ANNOT_FIELD);
+    
+    
+    mParamNameIter = localParams.getParameterNamesIterator();
   }  
 
   @Override
   public Query parse() throws SyntaxError {
-    if (mCoverAnnotLabel != null && mSpan != Integer.MAX_VALUE) {
-      throw new SyntaxError("Cannot specify both '" + PARAM_SPAN + 
-                            "' and '" + PARAM_COVER_ANNOT + "'");
+    /* Let's check that a user didn't specify the wrong parameter name */
+    while (mParamNameIter.hasNext()) {
+      String name = mParamNameIter.next();
+      
+      if (!mParamNameDict.contains(name) && 
+          !name.equals("v") &&
+          !name.equals("type")) {
+        throw new SyntaxError("Invalid query parameter '" + name + "'");
+      } 
     }
-
     
     /**
      *  <p>

@@ -63,7 +63,7 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
    * @throws Exception
    */
   public void resetAnnotationId(int startValue) throws Exception {
-    
+    mAnnotationId = startValue;
   };
 
   /**

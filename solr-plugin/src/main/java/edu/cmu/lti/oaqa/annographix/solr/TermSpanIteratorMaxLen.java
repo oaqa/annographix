@@ -74,15 +74,22 @@ public class TermSpanIteratorMaxLen extends TermSpanIterator {
     while (!mStartOffsetQueue.isEmpty()) {
       ElemInfoDataHolder bottom = mStartOffsetQueue.poll();
       
+      // Here start should be < mLargestStartOffset 
       int start = bottom.getCurrOffset();
       
       boolean bRet = false;
+      
+      int minOffsetToExceed = mLargestStartOffset - mMaxSpanLen - 1;
       
       if (start > mCurrSpanStartOffset /*
                                         * ignore if it's the same starting offset,
                                         * we care only about unique starting points.
                                         */
-          && mLargestStartOffset - start <= mMaxSpanLen
+          && start > minOffsetToExceed 
+              /* 
+               * If the start offset is too far from the end offset,
+               * we cannot have all query terms in a given span.
+               */
           ) {
         /*
          *  Signal we found a span that may contain all elements. Again,
@@ -95,10 +102,12 @@ public class TermSpanIteratorMaxLen extends TermSpanIterator {
         mCurrSpanEndOffset   = start + mMaxSpanLen;
       }
       
-      if (bottom.toNextElem()) {
+      if (bottom.findNextElemLargerOffset(minOffsetToExceed)) {
         // May be the new end highest start offset
         mLargestStartOffset = Math.max(mLargestStartOffset, bottom.getCurrOffset());
         mStartOffsetQueue.add(bottom);
+      } else {
+        return false; // Exhausted all possibilities with one element
       }
       
       if (bRet) return true;
@@ -136,26 +145,36 @@ class ElemInfoDataHolder implements Comparable<ElemInfoDataHolder> {
    */
   public void reset() {
     mData = mPost.getAllElements();
+    mQty = mPost.getQty();
     mCurr = 0;
   }
   
   /**
-   * @return the current offset as long as mCurr < mData.length.
+   * @return the current offset as long as mCurr < mQty.
    */
   public int getCurrOffset() {
     return mData[mCurr].mStartOffset;
   }
+
   /**
-   * Increase the index indicating the current entry.
+   * "Fast forward" the index of the current entry until the start
+   * offset becomes larger than a given one. Note that it makes at 
+   * least one move.
    * 
-   * @return true   if the pointer still points to a valid element (after the increase).    
-   *                 
+   * @return true   if the pointer still points to a valid element (after the move).
    */
-  public boolean toNextElem() {
-    if (mCurr < mData.length) {
+  public boolean findNextElemLargerOffset(int offsetToExceed) {
+    if (mCurr < mQty) {
       ++mCurr;
+    
+      if (mCurr < mQty) {
+        if (getCurrOffset() > offsetToExceed) return true;
+        mCurr = mPost.findElemLargerOffset(TermSpanIterator.FORWARD_ITER_QTY, 
+                                           offsetToExceed, mCurr);          
+        return mCurr < mQty;
+      }
     }
-    return mCurr < mData.length;
+    return false;
   }
   
   @Override
@@ -166,5 +185,6 @@ class ElemInfoDataHolder implements Comparable<ElemInfoDataHolder> {
 
   private OnePostStateBase  mPost;  
   private ElemInfoData[]    mData;
-  private int               mCurr = 0;  
+  private int               mCurr = 0;
+  private int               mQty = 0;
 }

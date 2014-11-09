@@ -163,7 +163,7 @@ public class XmlHelper {
    *  @return  a map, where keys are field names, while values represent
    *           values of indexable fields.
    */
-  public Map<String, String> parseXMLIndexEntry(String text) throws Exception {
+  public static Map<String, String> parseXMLIndexEntry(String text) throws Exception {
     HashMap<String, String> res = new HashMap<String,String>();
  
     

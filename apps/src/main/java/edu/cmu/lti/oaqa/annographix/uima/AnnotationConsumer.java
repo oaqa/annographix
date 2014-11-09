@@ -1,28 +1,25 @@
 package edu.cmu.lti.oaqa.annographix.uima;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.uima.UimaContext;
 import org.apache.uima.analysis_component.CasAnnotator_ImplBase;
 import org.apache.uima.analysis_engine.AnalysisEngineProcessException;
-import org.apache.uima.cas.CAS;
-import org.apache.uima.cas.CASException;
-import org.apache.uima.cas.FSIterator;
-import org.apache.uima.cas.Feature;
-import org.apache.uima.cas.FeatureStructure;
-import org.apache.uima.cas.Type;
-import org.apache.uima.cas.TypeSystem;
+import org.apache.uima.cas.*;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.apache.uima.util.Level;
 
-import edu.cmu.lti.oaqa.annographix.solr.AnnotationProxy;
-import edu.cmu.lti.oaqa.annographix.solr.UtilConst;
+import edu.cmu.lti.oaqa.annographix.solr.*;
+import edu.cmu.lti.oaqa.annographix.util.*;
 
 public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
 
@@ -36,7 +33,13 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
   /** Result of parsing the annotation mapping file. */
   private Map<String, MappingReader.TypeDescr> mMappingConfig;
   /** A view (SOFA) name to be used to extract annotations */
-  private String mViewName;
+  protected String mViewName;
+  
+  /** 
+   * A name of the field (also the name of the tag in the XML file)
+   * that keeps annotated text (but not the annotations themselves).
+   */
+  protected String          mTextFieldName;  
   /**
    * <p>
    * This class members provides unique IDs within a single annotating thread only.
@@ -107,6 +110,44 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
   }
   
   /**
+   * Opens file for writing.
+   * 
+   * @param context             UIMA context variable.
+   * @param fileParamName       A file name.
+   * @return                    A an output stream.
+   * @throws ResourceInitializationException
+   */
+  protected OutputStream initOutFile(UimaContext context, 
+                                     String fileParamName) 
+                                         throws ResourceInitializationException {
+    // extract configuration parameter settings
+    String oFileName = (String) context.getConfigParameterValue(fileParamName);
+    // Output file should be specified in the descriptor
+    if (oFileName == null) {
+        throw new ResourceInitializationException(
+                ResourceInitializationException.CONFIG_SETTING_ABSENT,
+                new Object[] { fileParamName });
+    }
+    // If specified output directory does not exist, try to create it
+    File outFile = new File(oFileName);
+    if (outFile.getParentFile() != null
+            && !outFile.getParentFile().exists()) {
+        if (!outFile.getParentFile().mkdirs())
+            throw new ResourceInitializationException(
+                    ResourceInitializationException.RESOURCE_DATA_NOT_VALID,
+                    new Object[] { oFileName, fileParamName });
+    }
+    OutputStream fileWriter = null;
+    
+    try {
+        fileWriter = CompressUtils.createOutputStream(outFile.getAbsolutePath());
+    } catch (IOException e) {
+        throw new ResourceInitializationException(e);
+    }
+    
+    return fileWriter;
+  }  
+  /**
    * See {@link CasAnnotator_ImplBase#initialize(UimaContext)}.
    */
   @Override
@@ -120,7 +161,15 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
       throw new ResourceInitializationException(
                     new Exception("Missing parameter: " + 
                                   UtilConst.CONFIG_VIEW_NAME));
+        
+    mTextFieldName = (String) 
+          context.getConfigParameterValue(UtilConst.CONFIG_TEXT4ANNOT_FIELD);
     
+    if (mTextFieldName == null)
+    throw new ResourceInitializationException(
+                new Exception("Missing parameter: " + 
+                              UtilConst.CONFIG_TEXT4ANNOT_FIELD));       
+        
     /* create the mapping configuration */
     MappingReader fieldMappingReader = new MappingReader();
     String mappingFileParam = 
@@ -131,6 +180,7 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
           new Exception("Missing parameter: " + PARAM_MAPPING_FILE)
       );
     }
+  
     
     try{
       mMappingConfig = fieldMappingReader.getConf(new FileInputStream(mappingFileParam));
@@ -140,8 +190,21 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
     }    
   }
   
-  /** A function that does all the CAS processing */
-  protected abstract void doProcess(String docText, JCas jcas, JCas viewJCas) 
+  /** 
+   * A function that does all the CAS processing.
+   * 
+   * @param     viewJCas    a specified {@link org.apache.uima.jcas.JCas} view.
+   * @param     docNo       a unique document ID.
+   * @param     docText     a complete text of a 2-level indexable XML document.
+   * @param     docFields   a complete key-value map of indexable fields,
+   *                        which are extracted from the 2-level indexable
+   *                        document.
+   */
+  protected abstract void doProcess(JCas viewJCas,
+                                    String docNo,
+                                    String docText,
+                                    Map<String, String> docFields                                    
+                                    )
       throws AnalysisEngineProcessException;
   /** 
    * A clean-up function that is called from the functions 
@@ -162,23 +225,55 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
     try {
         jcas = aCAS.getJCas();
         viewJCas = jcas.getView(mViewName);
-    } catch (CASException e) {
+        
+        String docText = aCAS.getDocumentText();
+        /*
+         *  Let's make a sanity check here, even though it comes at a small
+         *  additional cost:
+         *  The text in the view should match the text in the annotation field.
+         */
+        Map<String, String> docFields = XmlHelper.parseXMLIndexEntry(docText);
+        
+        String docNo = docFields.get(UtilConst.INDEX_DOCNO);
+        if (docNo == null) {
+          throw new Exception("Missing field: " + UtilConst.INDEX_DOCNO);
+        }            
+        
+        String annotText = docFields.get(mTextFieldName);
+        
+        if (annotText == null) {
+          throw new Exception("Missing field: " + mTextFieldName + 
+                              " docNo: " + docNo);
+        }
+        String jcasText = viewJCas.getDocumentText();
+        
+        if (annotText.compareTo(jcasText) != 0) {
+          throw new Exception(String.format(
+                      "Non-matching annotation texts for docNo: %s " + 
+                      " view name: %s " + 
+                      "text length: %d jcasView text length: %d ", 
+                      docNo, mViewName, annotText.length(), jcasText.length()));        
+        }
+
+        doProcess(viewJCas, docNo, docText, docFields);
+    } catch (Exception e) {
         throw new AnalysisEngineProcessException(e);
-    }
-  
-    doProcess(aCAS.getDocumentText(), jcas, viewJCas);            
+    }            
   }
 
   /**
    * A helper function that extracts annotations from a 
    * {@link org.apache.uima.jcas.JCAS} object.
    * 
-   * @param     docId   a unique document ID.
-   * @param     jcas    a {@link org.apache.uima.jcas.JCAS} interface to the CAS.
+   * @param     jcas    a {@link org.apache.uima.jcas.JCAS} object,
+   *                    which represents a view containing annotations. 
+   * @param     annotList   a list of annotations to process
    * 
    * @throws AnalysisEngineProcessException
    */
-  protected ArrayList<AnnotationProxy> generateAnnotations(JCas jcas) {
+  protected ArrayList<AnnotationProxy> generateAnnotations(
+                                            JCas jcas,
+                                            List<Annotation> origAnnotList) {
     /*
      *  First, obtain unique annotation IDs and
      *  memorize the relationship between annotation 
@@ -187,11 +282,7 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
      
      Map<Annotation,Integer>  annotIds = new HashMap<Annotation,Integer>();
      
-     FSIterator<Annotation> iter = 
-                         jcas.getAnnotationIndex(Annotation.type).iterator();
-     
-     while (iter.hasNext()) {
-       Annotation elem = iter.next();           
+     for(Annotation elem: origAnnotList) {           
        annotIds.put(elem, mAnnotationId++);
      }
   
@@ -203,7 +294,7 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
        Type                      type = jcas.getTypeSystem().getType(key);
        MappingReader.TypeDescr   desc = mMappingConfig.get(key); 
        
-       iter = jcas.getAnnotationIndex(type).iterator();
+       FSIterator<Annotation> iter = jcas.getAnnotationIndex(type).iterator();
   
        while (iter.hasNext()) { 
          Annotation elem   = iter.next();
@@ -262,6 +353,4 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
         // ignore IOException on destroy
     }
   }
-  
-  protected String getViewName() { return mViewName; }
 }

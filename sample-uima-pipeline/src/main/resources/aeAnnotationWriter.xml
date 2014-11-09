@@ -50,6 +50,13 @@
         <multiValued>false</multiValued>
         <mandatory>true</mandatory>
       </configurationParameter>
+    <configurationParameter>
+        <name>indri_format</name>
+        <description>Indri compatibility flag.</description>
+        <type>Boolean</type>
+        <multiValued>false</multiValued>
+        <mandatory>false</mandatory>
+      </configurationParameter>
     </configurationParameters>
     <configurationParameterSettings>
       <nameValuePair>
@@ -86,6 +93,12 @@
         <name>mapping_file</name>
         <value>
           <string>src/main/resources/annotation_map.xml</string>
+        </value>
+      </nameValuePair>
+    <nameValuePair>
+        <name>indri_format</name>
+        <value>
+          <boolean>false</boolean>
         </value>
       </nameValuePair>
     </configurationParameterSettings>

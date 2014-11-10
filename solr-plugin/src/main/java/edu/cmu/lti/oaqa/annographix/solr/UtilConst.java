@@ -65,7 +65,7 @@ public class UtilConst {
   public static final String STRING_ANY = "#any";
   
   
-  public static final int DEFAULT_MAX_SPAN_CHECK_ITER = 10000000;
+  public static final int DEFAULT_MAX_SPAN_CHECK_ITER = 1000000;
 
   
   /**

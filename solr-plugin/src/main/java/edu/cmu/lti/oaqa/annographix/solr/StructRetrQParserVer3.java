@@ -42,7 +42,7 @@ public class StructRetrQParserVer3 extends QParser {
   public final static String PARAM_COVER_ANNOT = "cover_annot";
   public final static String PARAM_TEXT_FIELD = UtilConst.CONFIG_TEXT4ANNOT_FIELD;
   public final static String PARAM_ANNOT_FIELD = UtilConst.CONFIG_ANNOTATION_FIELD;
-  public final static String PARAM_MAX_SPAN_CONSTR_ITER = "max_constr_iter";
+  public final static String PARAM_MAX_SPAN_CONSTR_ITER = "max_iter";
   /** 
    * This array <b>must</b> contain all parameter names, when a new parameter
    * is introduced, its name must be added here. 

@@ -28,17 +28,18 @@ import org.apache.solr.common.SolrDocumentList;
 
 public class SolrEvalUtils {
   /**
-   * @param topicId     question/query id
-   * @param idField     the name of the unique id field
-   * @param results     entries previously obtained by a search in SOLR
-   * @param trecFile    the already open stream
-   * @param runId       TREC requires this to identify runs
-   * @param maxNum      the maximum # of entries to save
-   * @throws IOException 
+   * Create one line a TREC-like QREL file.
+   * 
+   * @param topicId     a question ID.
+   * @param results     found entries to memorize.
+   * @param trecFile    an object used to write to the output file.
+   * @param runId       a run ID.
+   * @param maxNum      a maximum number of results to save (can be < the 
+   *                    the number of retrieved entries).
+   * @throws IOException
    */
   public static void saveTrecResults(
                               String           topicId,
-                              String           idField,
                               SolrRes[]        results,
                               BufferedWriter   trecFile,
                               String           runId,
@@ -50,13 +51,13 @@ public class SolrEvalUtils {
                                    (i+1), results[i].mScore, runId));
     }
   }
-  
+  /*
+   * This is for our private use only.
+   */
   public static void saveEvalResults(
                               String            questionTemplate,
                               String            topicId,
-                              String            idField,
-                              String            textField,
-                              SolrRes[]        results,
+                              SolrRes[]         results,
                               ArrayList<String> allKeyWords,
                               String            docDirName,
                               int maxNum) throws Exception {

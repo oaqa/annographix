@@ -75,4 +75,16 @@ public class DictNoComments {
     if (mToLower) s = s.toLowerCase();
     mDict.add(s);    
   }
+
+  /**
+   * Add all stopwords from another dictionary.
+   * 
+   * @param otherDict the dictionary to merge with.
+   */
+  public void addAll(DictNoComments otherDict) {
+    for (String s: otherDict.mDict) {
+      if (mToLower) s = s.toLowerCase();
+      mDict.add(s);
+    }    
+  }
 }

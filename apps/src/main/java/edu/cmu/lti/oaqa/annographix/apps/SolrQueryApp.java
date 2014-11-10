@@ -20,6 +20,7 @@ import java.io.*;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.io.FileUtils;
+import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 
 import edu.cmu.lti.oaqa.annographix.solr.*;
@@ -32,12 +33,19 @@ import edu.cmu.lti.oaqa.annographix.solr.*;
  *
  */
 public class SolrQueryApp {
+  /** 
+   * This is a run name to place in a QREL file, currently we don't
+   * employ it anyware and, therefore, opt to use a fake run name value.  
+   */
+  private static final String TREC_RUN = "fakerun";
+
   static void Usage(String err) {
     System.err.println("Error: " + err);
     System.err.println("Usage: " 
                        + "-u <Target Server URI> "
                        + "-q <Query file> "
-                       + "-n <Max # of results> ");
+                       + "-n <Max # of results> "
+                       + "-o <An optional TREC-style qrel file> ");
     System.exit(1);
   }
 
@@ -47,8 +55,11 @@ public class SolrQueryApp {
     options.addOption("u", null, true, "Solr URI");
     options.addOption("q", null, true, "Qyery");
     options.addOption("n", null, true, "Max # of results");
+    options.addOption("o", null, true, "An optional TREC-style qrel file runid");
 
     CommandLineParser parser = new org.apache.commons.cli.GnuParser(); 
+    
+    BufferedWriter qrelFile = null;
     
     try {
       CommandLine cmd = parser.parse(options, args);
@@ -74,13 +85,20 @@ public class SolrQueryApp {
         numRet = Integer.parseInt(cmd.getOptionValue("n"));
       }      
       
+      if (cmd.hasOption("o")) {
+        qrelFile = new BufferedWriter(new FileWriter(new File(cmd.getOptionValue("o"))));
+      }
+      
       List<String> fieldList = new ArrayList<String>();
       fieldList.add(UtilConst.ID_FIELD);
       fieldList.add("score");
       
-      Long totalTime = 0L;
+      double totalTime = 0;
+      double retQty = 0;
       
-      int qty = 0;
+      ArrayList<Double> queryTimes = new ArrayList<Double>();
+      
+      int queryQty = 0;
       for (String t : FileUtils.readLines(new File(queryFile))) {
         t = t.trim();
         if (t.isEmpty()) continue;
@@ -92,14 +110,47 @@ public class SolrQueryApp {
         Long tm1 = System.currentTimeMillis();
         SolrDocumentList res = solr.runQuery(q, fieldList, numRet);
         Long tm2 = System.currentTimeMillis();
+        retQty += res.getNumFound();
         System.out.println(qID + " Obtained: " + res.getNumFound() + 
                           " entries in " + (tm2 - tm1)  + " ms");
-        totalTime += (tm2 - tm1);
-        ++qty;
+        double delta = (tm2 - tm1);
+        totalTime += delta;
+        queryTimes.add(delta);
+        ++queryQty;
+        
+        if (qrelFile != null) {
+
+          ArrayList<SolrRes> resArr = new ArrayList<SolrRes>();
+          for (SolrDocument doc : res) {
+            String id  = (String)doc.getFieldValue(UtilConst.ID_FIELD);
+            float  score = (Float)doc.getFieldValue(UtilConst.SCORE_FIELD);
+            resArr.add(new SolrRes(id, "", score));
+          }
+          SolrRes[] results = resArr.toArray(new SolrRes[resArr.size()]);
+          Arrays.sort(results);
+          
+          SolrEvalUtils.saveTrecResults(qID, 
+                                   results, 
+                                   qrelFile, 
+                                   TREC_RUN, 
+                                   results.length);
+          
+        }
       }
-      System.out.println(String.format("Average query time: %f", (double)totalTime / qty));
+      double devTime = 0, meanTime = totalTime / queryQty;
+      for (int i = 0; i < queryQty; ++i) {
+        double d = queryTimes.get(i) - meanTime;
+        devTime += d * d;
+      }
+      devTime = Math.sqrt(devTime / (queryQty - 1));
+      System.out.println(String.format(
+                              "Query time, mean/standard dev: %.2f/%.2f (ms)", 
+                                       meanTime, devTime));
+      System.out.println(String.format(
+                            "Avg # of docs returned: %.2f", retQty / queryQty));
           
       solr.close();
+      qrelFile.close();
     } catch (ParseException e) {
       Usage("Cannot parse arguments");
     } catch(Exception e) {

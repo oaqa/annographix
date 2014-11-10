@@ -10,12 +10,17 @@
        <tokenizer class="solr.StandardTokenizerFactory" maxTokenLength="255"/>
        <filter class="solr.LowerCaseFilterFactory" />
        <filter class="solr.StopFilterFactory" words="stopwords.txt" ignoreCase="true"/> 
+       <!-- For the use of solr.KeywordRepeatFilterFactory and solr.RemoveDuplicatesTokenFilterFactory
+           see ee explanation here: https://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#Stemming
+       -->
+       <filter class="solr.KeywordRepeatFilterFactory"/>
        <!-- let's use a good stemmer here -->
        <filter class="solr.HunspellStemFilterFactory"
                 dictionary="en_US.dic"
                 affix="en_US.aff"
                 ignoreCase="true" 
        />
+       <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
      </analyzer>
    </fieldType>
     <fieldtype name="payload" stored="false" indexed="true" class="solr.TextField" >

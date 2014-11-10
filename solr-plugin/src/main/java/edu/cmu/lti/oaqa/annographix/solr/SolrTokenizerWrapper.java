@@ -68,7 +68,7 @@ public class SolrTokenizerWrapper {
    * one can explicitly specify the full class name:<br>
    * &lt;tokenizer 
         class="org.apache.lucene.analysis.standard.StandardTokenizerFactory" 
-        maxTokenLength="255" /&lt;<br>        
+        maxTokenLength="255" /&gt;<br>        
    * </p>
    * 
    * @param params  an objects specifying a name of the tokenizer class,

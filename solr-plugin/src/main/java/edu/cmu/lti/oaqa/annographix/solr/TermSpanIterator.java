@@ -195,7 +195,9 @@ public abstract class TermSpanIterator {
          elemIndx < mEndElemIndx[startPostIndex];
          ++elemIndx) {
       ++mSpanCheckConstrIter;
+      // This is a heuristic cutoff to forcibly terminate long-working queries  
       if (mSpanCheckConstrIter > mMaxSpanCheckConstrIter) return false;
+      
       elem.setCurrElemIndex(elemIndx);
       /*
        * Note that spans are sorted by start offset and for elements
@@ -273,11 +275,15 @@ public abstract class TermSpanIterator {
    * 
    * @param elemSorted  a sorted (first by connectedness, then by cost) 
    *                    array of posting states.
+   * @param maxSpanCheckConstrIter a maximum number of brute-force iterations
+   *                               to carry out in a span before giving up. 
    */
-  protected TermSpanIterator(OnePostStateBase[] elemSorted) {
+  protected TermSpanIterator(OnePostStateBase[] elemSorted, 
+                             int maxSpanCheckConstrIter) {
     mPostSorted     = elemSorted;
     mStartElemIndx  = new int[mPostSorted.length];
     mEndElemIndx    = new int[mPostSorted.length];
+    mMaxSpanCheckConstrIter = maxSpanCheckConstrIter;
 
     boolean[] seen = new boolean[mPostSorted.length];
         
@@ -375,8 +381,8 @@ public abstract class TermSpanIterator {
    * The maximum number of brute-force iterations that we carry out
    * before giving up on constraint checking for the <b>current span</b>.
    */
-  //protected int                        mMaxSpanCheckConstrIter = Integer.MAX_VALUE;
-  protected int                        mMaxSpanCheckConstrIter = 10000;
+  protected int                        mMaxSpanCheckConstrIter = 
+                                          UtilConst.DEFAULT_MAX_SPAN_CHECK_ITER;
   /**
    * A counter for the actual number of brute-force check iterations
    * that we have done so far in a current span

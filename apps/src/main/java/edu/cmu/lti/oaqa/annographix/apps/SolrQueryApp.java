@@ -99,6 +99,7 @@ public class SolrQueryApp {
       }
       System.out.println(String.format("Average query time: %f", (double)totalTime / qty));
           
+      solr.close();
     } catch (ParseException e) {
       Usage("Cannot parse arguments");
     } catch(Exception e) {

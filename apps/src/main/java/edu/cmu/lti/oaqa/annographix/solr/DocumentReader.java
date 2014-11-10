@@ -89,12 +89,12 @@ public class DocumentReader {
         throw new Exception("Can't find the field: '" + docText4Anot + "'");
       }
       
-      String docno = docFields.get(UtilConst.INDEX_DOCNO);
+      String docno = docFields.get(UtilConst.TAG_DOCNO);
       
       if (docno == null) {
         System.err.println("Parsing error, offending DOC:" + NL + docText);
         throw new Exception("Can't find the field: '" + 
-                            UtilConst.INDEX_DOCNO + "'");
+                            UtilConst.TAG_DOCNO + "'");
       }
 
       

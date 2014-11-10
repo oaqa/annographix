@@ -33,10 +33,12 @@ public class TermSpanIteratorCoverAnnot extends TermSpanIterator {
    * 
    * @param     postSorted  see {@link TermSpanIterator#TermSpanIterator(OnePostStateBase[])}
    * @param     coverAnnot  a pointer to the covering annotator posting wrapper.
+   * @param mMaxSpanCheckConstrIter 
    */
   TermSpanIteratorCoverAnnot(OnePostStateBase[] postSorted,
-                             OnePostStateBase   coverAnnot) {
-    super(postSorted);
+                             OnePostStateBase   coverAnnot, 
+                             int maxSpanCheckConstrIter) {
+    super(postSorted, maxSpanCheckConstrIter);
     mCoverAnnot = coverAnnot;
   }
   

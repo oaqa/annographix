@@ -36,10 +36,12 @@ public class TermSpanIteratorMaxLen extends TermSpanIterator {
    * 
    * @param     postSorted  see {@link TermSpanIterator#TermSpanIterator(OnePostStateBase[])}
    * @param     maxSpanLen  a maximum length of the span covering all query elements.
+   * @param     maxSpanCheckConstrIter  a maximum number of brute-force iterations
+   *                                    to carry out in a span before giving up.
    */
   TermSpanIteratorMaxLen(OnePostStateBase[] postSorted,
-                         int maxSpanLen) {
-    super(postSorted);
+                         int maxSpanLen, int maxSpanCheckConstrIter) {
+    super(postSorted, maxSpanCheckConstrIter);
     
     mMaxSpanLen = maxSpanLen;
     mQueueObjs = new ElemInfoDataHolder[postSorted.length];

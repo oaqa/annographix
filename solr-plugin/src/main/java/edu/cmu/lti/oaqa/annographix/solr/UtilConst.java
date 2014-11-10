@@ -65,9 +65,15 @@ public class UtilConst {
   public static final String STRING_ANY = "#any";
   
   
+  public static final int DEFAULT_MAX_SPAN_CHECK_ITER = 10000000;
+
+  
   /**
    * We need to limit the maximum number of characters in a token.
-   * Otherwise, payload descriptions will be truncated by Solr.
+   * Otherwise, payload descriptions will be truncated by SOLR.
+   * 
+   * TODO actually the maximum token length can be a plugin parameter
+   *      can we deal with it effectively?
    */
   public static final int MAX_WORD_LEN = Math.min(128,
                                      StandardAnalyzer.DEFAULT_MAX_TOKEN_LENGTH);
@@ -138,32 +144,14 @@ public class UtilConst {
    * 
    */
 
-   /*
-    * This function replace all whitespace characters with regular spaces.
-    * We also replace payload separators, or else the payload parse may fail.
-    */
-  public static final Pattern PATTERN_PREPARE_PAYLOAD = Pattern.compile("[\\s" + 
-                                                    UtilConst.PAYLOAD_CHAR + 
-                                                    UtilConst.PAYLOAD_ID_SEP_CHAR + "]");
-  
-  /** end query operators **/
-
-  public static final String INDEX_DOC_ENTRY = "DOC";
-  public static final String INDEX_DOCNO     = "DOCNO";
+  public static final String TAG_DOC_ENTRY = "DOC";
+  public static final String TAG_DOCNO     = "DOCNO";
   
   public static final String USER_AGENT = "Mozilla/4.0";
   
   /** These are all ASCII punctuation chars except the apostrophe! */
   public static final String NON_INDEXABLE_PUNCT = 
                                     "!\"#$%&()*+,-./:;<=>?@\\[\\]^_`{¦}~\\\\";
-  
-  public static String preparePayloadToken(String annotText) {
-    return PATTERN_PREPARE_PAYLOAD.matcher(annotText).replaceAll(" ").
-                                      // Stanford morphology chokes on '_'!
-                                      replace('_', ' ').
-                                      // Remove some punctuation
-                                      replaceAll("\\p{P}", " ");
-  }
   
   /**
    *  Replaces bad Unicode characters, but doesn't change the string length!

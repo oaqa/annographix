@@ -116,7 +116,7 @@ public class XmlHelper {
    
     Document doc = docBuilder.newDocument();
     doc.setXmlVersion(UtilConst.XML_VERSION);
-    Element rootElement = doc.createElement(UtilConst.INDEX_DOC_ENTRY);
+    Element rootElement = doc.createElement(UtilConst.TAG_DOC_ENTRY);
     doc.appendChild(rootElement);
    
     for (String key: fields.keySet()) {
@@ -169,10 +169,10 @@ public class XmlHelper {
     
     Document doc = parseDocWithoutXMLDecl(text);
     
-    Node root = XmlHelper.getNode(UtilConst.INDEX_DOC_ENTRY, doc.getChildNodes());
+    Node root = XmlHelper.getNode(UtilConst.TAG_DOC_ENTRY, doc.getChildNodes());
     if (root == null) {
       System.err.println("Parsing error, offending document:" + NL + text);
-      throw new Exception("No " + UtilConst.INDEX_DOC_ENTRY);
+      throw new Exception("No " + UtilConst.TAG_DOC_ENTRY);
     }  
 
     NodeList nodes = root.getChildNodes();
@@ -188,7 +188,7 @@ public class XmlHelper {
   }
   
   private static final 
-  String CLOSING_TAG = "</"  + UtilConst.INDEX_DOC_ENTRY + ">";
+  String CLOSING_TAG = "</"  + UtilConst.TAG_DOC_ENTRY + ">";
 
   /**
    * Several entries produced produced by the function {@link #genXMLIndexEntry(Map)}
@@ -242,10 +242,10 @@ public class XmlHelper {
     Transformer transformer = transformerFactory.newTransformer();  
     Document doc = parseDocWithoutXMLDecl(docText);
     
-    Node root = XmlHelper.getNode(UtilConst.INDEX_DOC_ENTRY, doc.getChildNodes());
+    Node root = XmlHelper.getNode(UtilConst.TAG_DOC_ENTRY, doc.getChildNodes());
     if (root == null) {
       System.err.println("Parsing error, offending document:" + NL + docText);
-      throw new Exception("No " + UtilConst.INDEX_DOC_ENTRY);
+      throw new Exception("No " + UtilConst.TAG_DOC_ENTRY);
     }  
 
     NodeList nodes = root.getChildNodes();

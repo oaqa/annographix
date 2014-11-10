@@ -230,9 +230,9 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
 
         Map<String, String> docFields = XmlHelper.parseXMLIndexEntry(docText);
         
-        String docNo = docFields.get(UtilConst.INDEX_DOCNO);
+        String docNo = docFields.get(UtilConst.TAG_DOCNO);
         if (docNo == null) {
-          throw new Exception("Missing field: " + UtilConst.INDEX_DOCNO);
+          throw new Exception("Missing field: " + UtilConst.TAG_DOCNO);
         }            
         
         doProcess(viewJCas, docNo, docText, docFields);

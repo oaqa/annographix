@@ -99,7 +99,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
     }
     
     String origDocText = docFields.get(mTextFieldName);
-    String docNo       = docFields.get(UtilConst.INDEX_DOCNO);
+    String docNo       = docFields.get(UtilConst.TAG_DOCNO);
     
     final String docText = UtilConst.
                   replaceWhiteSpaces(UtilConst.removeBadUnicode(origDocText)).    
@@ -142,7 +142,7 @@ public class SolrDocumentIndexer implements DocumentIndexer {
     for (Entry<String, String> e: docFields.entrySet()) {
       String key = e.getKey(), value = e.getValue();
       if (!key.equalsIgnoreCase(UtilConst.ID_FIELD) &&
-          !key.equalsIgnoreCase(UtilConst.INDEX_DOCNO) &&
+          !key.equalsIgnoreCase(UtilConst.TAG_DOCNO) &&
           !key.equalsIgnoreCase(mTextFieldName)) {
         addField(oneDoc, key, value);
       }

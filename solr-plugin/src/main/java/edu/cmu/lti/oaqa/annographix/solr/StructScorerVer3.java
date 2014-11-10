@@ -51,6 +51,7 @@ public class StructScorerVer3 extends Scorer {
   private SimScorer mDocScorerAnnotField;
   private int       mCurrDocId = -1;
   private int       mSpan;
+  private int       mMaxSpanCheckConstrIter;
   private int       mNumMatches = 0;
   
   /** 
@@ -83,6 +84,8 @@ public class StructScorerVer3 extends Scorer {
    * @param span            The maximum span size in the # number of characters.
    * @param docScorerTextField  A similarity scorer for the text field.
    * @param docScorerAnnotField A similarity scorer for the annotation field.
+   * @param maxSpanCheckConstrIter    The maximum number of brute-force iterations that we carry out
+   *                                  before giving up on constraint checking for the <b>current span</b>. 
    */
   public StructScorerVer3(Weight weight,
                           StructQueryParseVer3 queryParse, 
@@ -90,12 +93,14 @@ public class StructScorerVer3 extends Scorer {
                           DocsAndPositionsEnum   coverAnnotPost,
                           int span,
                           SimScorer docScorerTextField, 
-                          SimScorer docScorerAnnotField) {
+                          SimScorer docScorerAnnotField, 
+                          int maxSpanCheckConstrIter) {
     super(weight);
 
     mDocScorerAnnotField = docScorerAnnotField;
     mDocScorerTextField = docScorerTextField;
     mSpan = span;
+    mMaxSpanCheckConstrIter = maxSpanCheckConstrIter;
     
     /**
      * We need to wrap up postings using objects of the type OnePostStateBase.
@@ -197,11 +202,11 @@ public class StructScorerVer3 extends Scorer {
     if (mCoverAnnotPost != null) {
       mTermSpanIterator = 
           new TermSpanIteratorCoverAnnot(mPostSortByConnQtyMinCostCompIdPostCost,
-                                         mCoverAnnotPost); 
+                                         mCoverAnnotPost, mMaxSpanCheckConstrIter); 
     } else {
       mTermSpanIterator = 
           new TermSpanIteratorMaxLen(mPostSortByConnQtyMinCostCompIdPostCost,
-                                     mSpan);
+                                     mSpan, mMaxSpanCheckConstrIter);
       
     }
   }

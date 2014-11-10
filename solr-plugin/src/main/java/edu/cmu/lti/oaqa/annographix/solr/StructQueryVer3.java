@@ -50,6 +50,11 @@ public class StructQueryVer3 extends Query {
   private String    mAnnotFieldName;
   /** A size (in the # of chars) of the window where we look for occurrences. */
   private int       mSpan;
+  /**
+   * The maximum number of brute-force iterations that we carry out
+   * before giving up on constraint checking for the <b>current span</b>.
+   */
+  private int mMaxSpanCheckConstrIter;
   /** A label of a top-level covering annotation; equal to null, if there is none. */
   private String    mCoverAnnotLabel;
   /** Lucene term objects */
@@ -78,13 +83,16 @@ public class StructQueryVer3 extends Query {
    * @param textFieldName       A name of the text field that is annotated.
    * @param annotFieldName      A name of the field that stores annotations for 
    *                            the text field mTextFieldName.
+   * @param maxSpanCheckConstrIter    The maximum number of brute-force iterations that we carry out
+   *                                  before giving up on constraint checking for the <b>current span</b>.
    * @throws SyntaxError
    */
   public StructQueryVer3(String text, 
                          int    span,
                          String coverAnnotLabel,
                          String textFieldName, 
-                         String annotFieldName)
+                         String annotFieldName, 
+                         int    maxSpanCheckConstrIter)
                          throws SyntaxError
   {
     mQueryText = text;
@@ -95,6 +103,8 @@ public class StructQueryVer3 extends Query {
     
     mTextFieldName = textFieldName;
     mAnnotFieldName = annotFieldName;
+    
+    mMaxSpanCheckConstrIter = maxSpanCheckConstrIter;
     
     mQueryParse = new StructQueryParseVer3(mQueryText);
     
@@ -114,8 +124,9 @@ public class StructQueryVer3 extends Query {
       mCoverAnnotTerm = new Term(mAnnotFieldName, mCoverAnnotLabel);
     }
     logger.info(
-        String.format("Query created, span %d, covering annot. '%s'",
-                      mSpan, mCoverAnnotLabel != null ? mCoverAnnotLabel:""));
+        String.format("Query created, span %d, covering annot. '%s', maximum # of iter: %d",
+                      mSpan, mCoverAnnotLabel != null ? mCoverAnnotLabel:"",
+                      mMaxSpanCheckConstrIter));
   }
   
   @Override
@@ -380,7 +391,8 @@ public class StructQueryVer3 extends Query {
           postings, coverAnnotPost, 
           mSpan,
           mSimilarity.simScorer(mWeightTextField, context),
-          mSimilarity.simScorer(mWeightAnnotField, context));
+          mSimilarity.simScorer(mWeightAnnotField, context),
+          mMaxSpanCheckConstrIter);
     }
     
     @Override

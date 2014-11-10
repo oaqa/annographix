@@ -138,11 +138,14 @@ public abstract class TermSpanIterator {
    */
   public boolean checkSpanConstraints() {
     int prevCompId = -1;
+    
+    mSpanCheckConstrIter = 0;    
     // We want to consider components in the order they are sorted 
     for (int i = 0; i < mPostSorted.length; ++i) {
       int compId = mPostSorted[i].getComponentId();
       if (compId == prevCompId) continue; // This component was checked already
       prevCompId = compId;
+
       if (!checkSpanConstraintsForOneComponent(mCompStartId[compId],
                                                mCompEndId[compId], 
                                                mCompStartId[compId]))
@@ -191,6 +194,8 @@ public abstract class TermSpanIterator {
     for (int elemIndx = mStartElemIndx[startPostIndex];
          elemIndx < mEndElemIndx[startPostIndex];
          ++elemIndx) {
+      ++mSpanCheckConstrIter;
+      if (mSpanCheckConstrIter > mMaxSpanCheckConstrIter) return false;
       elem.setCurrElemIndex(elemIndx);
       /*
        * Note that spans are sorted by start offset and for elements
@@ -224,6 +229,7 @@ public abstract class TermSpanIterator {
        *  because there are no constraints shared with them.
        */
       if (startPostIndex  > compStartId) {
+        /*
         // Current node is constraining, compStartId <= startPostIndex - 1
         if (!mPostSorted[startPostIndex].checkConstraints(compStartId, 
                                                           startPostIndex - 1)) {
@@ -236,6 +242,8 @@ public abstract class TermSpanIterator {
               break;
             } 
         }
+        */
+        bOk = mPostSorted[startPostIndex].checkConstrIncrIndexed();
       }
          
       if (bOk) {
@@ -363,6 +371,17 @@ public abstract class TermSpanIterator {
    * updated by a child's class {@link #nextSpanInternal()}. 
    */
   protected int                        mCurrSpanStartOffset = -1;
+  /**
+   * The maximum number of brute-force iterations that we carry out
+   * before giving up on constraint checking for the <b>current span</b>.
+   */
+  //protected int                        mMaxSpanCheckConstrIter = Integer.MAX_VALUE;
+  protected int                        mMaxSpanCheckConstrIter = 10000;
+  /**
+   * A counter for the actual number of brute-force check iterations
+   * that we have done so far in a current span
+   */
+  protected int                        mSpanCheckConstrIter = 0;
   
 }
 

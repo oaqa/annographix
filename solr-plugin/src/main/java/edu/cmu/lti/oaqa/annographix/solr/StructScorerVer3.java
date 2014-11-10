@@ -180,7 +180,12 @@ public class StructScorerVer3 extends Scorer {
       mPostSortByConnQtyMinCostCompIdPostCost[i].setSortIndex(i);
     }
     
-    // Postings are supposed
+    // Let's create an "index" for more efficient incremental constraint verification
+    for (int i = 0; i < tokQty; ++i) {
+      mPostSortByConnQtyMinCostCompIdPostCost[i]
+          .buildConstraintIndex(mPostSortByConnQtyMinCostCompIdPostCost);
+    }
+    
     
     /*
      *  Let's create a span iterator. It is defined by either

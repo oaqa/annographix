@@ -126,8 +126,11 @@ public abstract class OnePostStateBase {
    * Find an element with an offset larger than the specified one.  
    * 
    * <p>
-   * This function assumes that elements are sorted by in the order of 
-   * non-decreasing offsets. It relies on the efficient exponential search. 
+   * This function assumes that a <b>non-empty</b? set of elements is sorted 
+   * in the order of non-decreasing offsets. The function relies on the efficient 
+   * exponential search. Yet, before launching the exponential search, 
+   * it simply iterates several times, incrementing the element index
+   * by one in each iteration. 
    * </p> 
    *
    * @param     sortedElemInfo    an array of elements sorted in the order of
@@ -323,7 +326,7 @@ public abstract class OnePostStateBase {
   }  
   
   /**
-   * Memorize constraints associated with the given posting.
+   * Memorizes constraints associated with the given posting.
    * 
    * <p>
    * The list of constraints includes a list of constraint types,
@@ -352,7 +355,7 @@ public abstract class OnePostStateBase {
     }    
   }
   /**
-   * Memorize an index in the sorted array of postings
+   * Memorizes an index in the sorted array of postings
    * 
    * @param     sortIndx        an index in the array of postings sorted
    *                            using SortPostByConnectQtyAndCost.
@@ -366,6 +369,68 @@ public abstract class OnePostStateBase {
    *            using SortPostByConnectQtyAndCost.
    */
   public int getSortIndex() { return mSortIndx; }
+  
+  /**
+   * Builds an "index" for efficient incremental constraint verification.
+   * 
+   * <p>
+   * When we check constraints, we proceed recursively in the order
+   * of increasing mSortIndx. When we proceed to a posting list with a larger
+   * mSortIndx (and iterate over possible positions of its elements) we need
+   * to check constraints of two types:
+   * </p>
+   * <ol>
+   * <li>This current posting is constraining posting elements with
+   *     smaller sort index.
+   * <li>Elements of postings with smaller sort indices constrain this
+   *     current posting.
+   * </ol>
+   * 
+   * @param allSortedPost
+   */
+  public void buildConstraintIndex(OnePostStateBase allSortedPost[]) {
+    ArrayList<ConstraintInfo>   constrList = new ArrayList<ConstraintInfo>();
+    
+    // First let's memorize this node constraints with smaller-sort-index nodes 
+    for (int i = 0; i < mConstrNode.length; ++i) {
+      OnePostStateBase dep = mConstrNode[i];
+      if (dep.getSortIndex() < mSortIndx) {
+        constrList.add(new ConstraintInfo(this, // the current node is constraining
+                                          dep,
+                                          mConstrType[i]));
+      }      
+    }
+    // Second let's retrieve constraints that smaller-sort-index nodes form with the current one
+    for (int k = 0; k < allSortedPost.length; ++k) {
+      OnePostStateBase main = allSortedPost[k];
+      if (main.getSortIndex()  >= mSortIndx) continue;
+      for (int i = 0; i < main.mConstrNode.length; ++i) {
+        OnePostStateBase dep = main.mConstrNode[i];
+        if (dep.getSortIndex() == mSortIndx) { // the current node is a dependent node
+          constrList.add(new ConstraintInfo(main,
+                                            this,
+                                            main.mConstrType[i]));
+        }
+      }
+    }
+    
+    mConstraintIndex = new ConstraintInfo[constrList.size()];
+    constrList.toArray(mConstraintIndex);
+  }
+  
+  /**
+   * Check if constraints involving the current node and all
+   * the nodes with smaller sort indices are satisfied.
+   * To use this function, one should call {@link #buildConstraintIndex(OnePostStateBase[])}
+   * in advance.
+   * 
+   * @return true if and only if all constraints are satisfied.
+   */
+  public boolean checkConstrIncrIndexed() {
+    for (ConstraintInfo e : mConstraintIndex)
+      if (!e.check()) return false;
+    return true;
+  }
   
   /**
    * Check if constraints involving the current node and the node
@@ -455,13 +520,15 @@ public abstract class OnePostStateBase {
   protected StartOffsetElemInfoDataComparator   mOffsetComp = 
                                       new StartOffsetElemInfoDataComparator();
   
-  protected StructQueryParseVer3.ConstraintType[]     mConstrType = null;
+  protected StructQueryParseVer3.ConstraintType[] mConstrType = null;
   protected OnePostStateBase[]                    mConstrNode = null;
   protected int                                   mConnectQty = 0;
   protected long                                  mMinCompPostCost = Long.MAX_VALUE;
   protected int                                   mComponentId = -1;
   protected int                                   mSortIndx = -1;
 
+  /** An "index" of constraints that is used for faster incremental constraint verification */
+  ConstraintInfo[]                                mConstraintIndex;
 }
 
 class StartOffsetElemInfoDataComparator implements Comparator<ElemInfoData> {
@@ -472,3 +539,42 @@ class StartOffsetElemInfoDataComparator implements Comparator<ElemInfoData> {
   }
 }
 
+/**
+ * A simple helper class encapsulating a constraint check 
+ * for two nodes, one of which is constraining and and
+ * another one is being dependent, i.e., constraint.
+ *
+ */
+class ConstraintInfo {
+  OnePostStateBase                        mConstrainingNode;
+  OnePostStateBase                        mDependentNode;
+  StructQueryParseVer3.ConstraintType     mConstrType;
+  /**
+   * @param mConstrainingNode   a constraining node.
+   * @param mDependentNode      a dependent, i.e., constrained node.
+   * @param constrType          a constraint type
+   */
+  public ConstraintInfo(OnePostStateBase constrainingNode,
+                        OnePostStateBase dependentNode, 
+                        ConstraintType constrType) {
+    mConstrainingNode = constrainingNode;
+    mDependentNode    = dependentNode;
+    mConstrType       = constrType;
+  }
+  
+  /**
+   *  @return true, if and only if the constraint is satisfied.
+   */
+  public boolean check() {
+    ElemInfoData    eCurr  = mConstrainingNode.getCurrElement();
+    ElemInfoData    eOther = mDependentNode.getCurrElement();
+    
+    if (mConstrType == ConstraintType.CONSTRAINT_PARENT){
+      return eCurr.mId == eOther.mParentId;
+    } else {
+      // mConstrType[k] == ConstraintType.CONSTRAINT_CONTAINS
+      return (eOther.mStartOffset >= eCurr.mStartOffset &&
+              eOther.mEndOffset   <= eCurr.mEndOffset);
+    }    
+  }
+}

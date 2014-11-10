@@ -243,11 +243,11 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
 
   /**
    * A helper function that extracts annotations from a 
-   * {@link org.apache.uima.jcas.JCAS} object.
+   * {@link org.apache.uima.jcas.JCas} object.
    * 
-   * @param     jcas    a {@link org.apache.uima.jcas.JCAS} object,
+   * @param     jcas    a {@link org.apache.uima.jcas.JCas} object,
    *                    which represents a view containing annotations. 
-   * @param     annotList   a list of annotations to process
+   * @param     origAnnotList   a list of annotations to process
    * 
    * @throws AnalysisEngineProcessException
    */

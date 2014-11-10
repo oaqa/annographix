@@ -59,7 +59,7 @@ public class DictNoComments {
   /**
    * Initialized dictionary from a multi-line string.
    * 
-   * @param file        a file object.
+   * @param text        a text content of the dictionary file (with newlines).
    * @param toLower     should we lowercase?  
    */
   public DictNoComments(String text, boolean toLower) {

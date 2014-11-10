@@ -71,9 +71,8 @@ public class SolrTokenizerWrapper {
         maxTokenLength="255" /&lt;<br>        
    * </p>
    * 
-   * @param tokClassName   a short or full name of the tokenizer class.
-   * @param tokClassArgs   key-value pairs specifying tokenizer arguments,
-   *                       keys are argument names, values are argument values.
+   * @param params  an objects specifying a name of the tokenizer class,
+   *                as well as tokenizer's parameters.
    *                        
    * @throws ClassNotFoundException 
    * @throws SecurityException 

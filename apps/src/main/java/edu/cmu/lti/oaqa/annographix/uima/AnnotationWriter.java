@@ -90,7 +90,7 @@ public class AnnotationWriter extends AnnotationConsumer {
     mAnnotFileWriter = new BufferedWriter(new OutputStreamWriter(annotFileOut));    
   }
   
-  /**
+  /*
    *  See {@link #AnnotationConsumer.doProcess(JCas, String, String, Map)}
    */
   @Override

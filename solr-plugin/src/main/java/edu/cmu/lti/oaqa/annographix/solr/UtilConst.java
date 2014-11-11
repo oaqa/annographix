@@ -85,7 +85,7 @@ public class UtilConst {
    *  This line would look like:
    *  </p>
    *  <p>
-   * <filter class="solr.DelimitedPayloadTokenFilterFactory" delimiter="|" ...    
+   * &lt;filter class="solr.DelimitedPayloadTokenFilterFactory" delimiter="|" ...    
    *    
    */
   public static final char PAYLOAD_CHAR = '|';
@@ -108,7 +108,8 @@ public class UtilConst {
   public static final Pattern PATTERN_WHITESPACE = Pattern.compile("[\\s\n\r\t]");  
   
   /**
-   * Replace whitespaces with regular spaces.
+   * @param  str  a string where replace whitespaces are to be replaced.
+   * @return a string with whitespaces replaced by regular spaces.
    */
   public static String replaceWhiteSpaces(String str) {
     return PATTERN_WHITESPACE.matcher(str).replaceAll(" ");
@@ -212,9 +213,10 @@ public class UtilConst {
    * 
    * @param annotationType          annotation type, e.g., NamedEntity.
    * @param annotationLabel         annotation label, e.g. PER.
-   * @param term
+   * @param term                    a keyterm from the text covered by the annotation.
    * @return complete keyword representing the annotation
    */
+  @Deprecated
   public static String combineFieldValue(String annotationType, 
                                          String annotationLabel,
                                          String term) {

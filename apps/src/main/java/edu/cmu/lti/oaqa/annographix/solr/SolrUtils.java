@@ -42,6 +42,7 @@ public class SolrUtils {
    * 
    * @return an object of the type {@link org.apache.solr.common.SolrInputDocument},
    *         which can be indexed.
+   * @throws Exception
    */
   public static SolrInputDocument buildSolrDocument(HashMap<String, Object> keyValueMap)
       throws Exception {

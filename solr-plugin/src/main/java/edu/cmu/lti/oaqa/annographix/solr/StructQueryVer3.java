@@ -79,7 +79,8 @@ public class StructQueryVer3 extends Query {
    * @param text                A text of query.
    * @param span                A size (in the # of chars) of the window where we
    *                            look for occurrences.
-   * @param coverAnnotLabel 
+   * @param coverAnnotLabel     A label of the span-defining (i.e. covering) annotation, e.g.,
+                                sentence, paragraph, etc.
    * @param textFieldName       A name of the text field that is annotated.
    * @param annotFieldName      A name of the field that stores annotations for 
    *                            the text field mTextFieldName.
@@ -216,9 +217,9 @@ public class StructQueryVer3 extends Query {
      * 
      * {@link #getValueForNormalization()} and {@link #normalize(float, float)}
      * are implemented similarly to  
-     * {@link org.apache.lucene.search.PhraseQuery.PhraseWeight#getValueForNormalization()}
+     * org.apache.lucene.search.PhraseQuery.PhraseWeight#getValueForNormalization()
      * and 
-     * {@link org.apache.lucene.search.PhraseQuery.PhraseWeight#normalize(float, float)}.
+     * org.apache.lucene.search.PhraseQuery.PhraseWeight#normalize(float, float).
      * 
      */
     @Override

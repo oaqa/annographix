@@ -263,7 +263,7 @@ public class StructScorerVer3 extends Scorer {
   }
 
   /**
-   * Move to the first document with id >= target.
+   * Move to the first document with id &gt;= target.
    * 
    * @param target      find a document at least this large.
    */

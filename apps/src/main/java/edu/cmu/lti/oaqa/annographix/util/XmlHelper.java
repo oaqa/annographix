@@ -43,7 +43,7 @@ import edu.cmu.lti.oaqa.annographix.solr.UtilConst;
  * 
  * <p>Two notable XML formats:
  * <ul>
- * <li>A generic simple two-level XML (DOC -> FIELD_NAME -> FIELD_CONTENT);
+ * <li>A generic simple two-level XML (DOC -&gt; FIELD_NAME -&gt; FIELD_CONTENT);
  * <li>A more complex, more deeply nested, AQUAINT format, which we call
  * a three-level format. See {@link #parseXMLAQUAINTEntry(String)} for details.
  * </ul>
@@ -162,6 +162,7 @@ public class XmlHelper {
    *  
    *  @return  a map, where keys are field names, while values represent
    *           values of indexable fields.
+   *  @throws Exception
    */
   public static Map<String, String> parseXMLIndexEntry(String text) throws Exception {
     HashMap<String, String> res = new HashMap<String,String>();
@@ -233,7 +234,7 @@ public class XmlHelper {
    *  
    *  @return  a map, where keys are field names, while values represent
    *           values of indexable fields.
-   *  
+   *  @throws Exception 
    */
   public Map<String, String> parseXMLAQUAINTEntry(String docText) throws Exception {
     HashMap<String, String> res = new HashMap<String,String>();

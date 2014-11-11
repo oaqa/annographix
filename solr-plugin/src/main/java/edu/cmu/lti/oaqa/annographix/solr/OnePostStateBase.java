@@ -93,6 +93,7 @@ public abstract class OnePostStateBase {
   public int getDocID() { return mDocId; }
   
   /**
+   * @param i  an index of an element to return.
    * @return an i-th element
    */
   public ElemInfoData getElement(int i) { return mSortedElemInfo[i]; }
@@ -126,7 +127,7 @@ public abstract class OnePostStateBase {
    * Find an element with an offset larger than the specified one.  
    * 
    * <p>
-   * This function assumes that a <b>non-empty</b? set of elements is sorted 
+   * This function assumes that a <b>non-empty</b> set of elements is sorted 
    * in the order of non-decreasing offsets. The function relies on the efficient 
    * exponential search. Yet, before launching the exponential search, 
    * it simply iterates several times, incrementing the element index
@@ -148,8 +149,8 @@ public abstract class OnePostStateBase {
    *                              larger as this index.
    *                            
    *  
-   * @return    the index (>= minIndx) of the first element 
-   *            whose offset > minOffset or {@link #getQty()} if such
+   * @return    the index (&gt;= minIndx) of the first element 
+   *            whose offset &gt; minOffset or {@link #getQty()} if such
    *            element cannot be found. 
    *             
    *  
@@ -248,7 +249,7 @@ public abstract class OnePostStateBase {
    * @param     linSearchIterQty  a maximum number of forward iterations to carry out,
    *                              before starting a full-blown exponential search. 
    * @param     offsetToExceed    find elements with offsets larger than this value.
-   * @param     minIndx           find elements with indices >= than this value.
+   * @param     minIndx           find elements with indices &gt;= than this value.
    * 
    * @return                a minimum index of the element whose offset is
    *                        larger than the specified parameter, or the
@@ -293,10 +294,10 @@ public abstract class OnePostStateBase {
   
   
   /**
-   * Move to the first document with id >= docId.
+   * Move to the first document with id &gt;= docId.
    * 
    * @param docId           find a document with id at least this large.
-   * @return                the first document with id >= docId or {@link OnePostStateBase#NO_MORE_DOCS} if no docs are available with ids >= docId.
+   * @return                the first document with id &gt;= docId or {@link OnePostStateBase#NO_MORE_DOCS} if no docs are available with ids &gt;= docId.
    * @throws IOException
    */
   public int advance(int docId) throws IOException {
@@ -339,7 +340,6 @@ public abstract class OnePostStateBase {
    * @param     constrType      a list of constraint types.
    * @param     constrNode      a list of constraint/dependent nodes.
    * 
-   * @throws Exception
    */
   public void setConstraints(ArrayList<StructQueryParseVer3.ConstraintType> constrType,
                              ArrayList<OnePostStateBase> constrNode) {
@@ -386,7 +386,7 @@ public abstract class OnePostStateBase {
    *     current posting.
    * </ol>
    * 
-   * @param allSortedPost
+   * @param allSortedPost sorted postings.
    */
   public void buildConstraintIndex(OnePostStateBase allSortedPost[]) {
     ArrayList<ConstraintInfo>   constrList = new ArrayList<ConstraintInfo>();
@@ -476,6 +476,7 @@ public abstract class OnePostStateBase {
   /**
    * This function read one-document tokens/annotations start and end offsets.
    * All read entries are supposed to be sorted by the start offset!
+   * @throws IOException
    */
   protected abstract void readDocElements()  throws IOException;
   

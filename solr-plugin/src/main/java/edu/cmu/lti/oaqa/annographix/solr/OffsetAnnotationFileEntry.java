@@ -52,6 +52,8 @@ public class OffsetAnnotationFileEntry
     * Construct an entry from an Indri-style annotation offset file. 
     * 
     * @param line   a string of tab-separated field values.
+    * @return an instance of the annotation class, which contains
+    *         data extracted from tab-separated fields.
     */
   public static OffsetAnnotationFileEntry parseLine(String line) 
                                             throws 

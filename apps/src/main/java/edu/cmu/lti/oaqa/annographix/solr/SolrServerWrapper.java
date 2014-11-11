@@ -84,6 +84,7 @@ public final class SolrServerWrapper implements Closeable {
   /** 
    * @return the current SOLR-server object  
    *         of the type {@link org.apache.solr.client.solrj.SolrServer}. 
+   * @throws Exception
    */
 
   public SolrServer getServer() throws Exception {
@@ -182,6 +183,7 @@ public final class SolrServerWrapper implements Closeable {
    * Submits a batch of update instructions in XML format.
    * 
    * @param    docXML input XML that represents one or more update instruction.
+   * @throws Exception
    */ 
   public void submitXML(String docXML) throws Exception {
     DirectXmlRequest xmlreq = new DirectXmlRequest("/update", docXML);
@@ -196,6 +198,7 @@ public final class SolrServerWrapper implements Closeable {
    *                an object of the type {@link org.apache.solr.common.SolrInputDocument}.
    * 
    * @return a textual representation of the document in XML format.
+   * @throws Exception
    */
   public String convertSolrDocInXML(SolrInputDocument solrDoc)throws Exception{
     return ClientUtils.toXML(solrDoc);
@@ -205,6 +208,7 @@ public final class SolrServerWrapper implements Closeable {
    * Index one document (in XML format), see {@link #convertSolrDocInXML(SolrInputDocument)}.
    * 
    * @param docXML a textual representation of the document in XML format.
+   * @throws Exception
    */
   public void indexDocument(String docXML) throws Exception {
 
@@ -217,6 +221,7 @@ public final class SolrServerWrapper implements Closeable {
    * Index one document using a key-value map representation.
    * 
    * @param    keyValueMap  key-value map (field name, field text).
+   * @throws Exception
    */
   public void indexDocument(HashMap<String,Object> keyValueMap) throws Exception {
     SolrInputDocument solrDoc = SolrUtils.buildSolrDocument(keyValueMap);
@@ -226,9 +231,10 @@ public final class SolrServerWrapper implements Closeable {
     mServer.request(xmlreq);
   }
 
- /**
-  * Issue a commit.
-  */
+  /**
+   * Issue a commit.
+   * @throws Exception
+   */
   public void indexCommit() throws Exception {
     mServer.commit();
   }
@@ -237,6 +243,7 @@ public final class SolrServerWrapper implements Closeable {
   * Delete documents that satisfy a given query.
   * 
   * @param query delete documents that satisfy this query.
+  * @throws Exception
   */
   public void deleteDocumentByQuery(String query)throws Exception{
 

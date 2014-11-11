@@ -27,7 +27,7 @@ import org.apache.tools.bzip2.CBZip2InputStream;
  *   Supports the following formats:
  *   </p>
  *   <ul>
- *   <li>For reading: .gz & bz2
+ *   <li>For reading: .gz and bz2
  *   <li>For writing: only .gz
  *   </ul>
  *

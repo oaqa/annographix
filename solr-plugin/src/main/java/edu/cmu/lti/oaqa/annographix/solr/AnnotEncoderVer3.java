@@ -24,10 +24,11 @@ import org.apache.lucene.util.ArrayUtil;
 
 /**
  *  Encode annotation-related information as a {@link BytesRef}.
+ *  <p>
  *  This information includes the following comma-separated values:
  *  start offset, end offset, id, parent id.
- * <p/>
- * See {@link org.apache.lucene.analysis.payloads.PayloadHelper#encodeInt(int, byte[], int)}.
+ *  <p>
+ *  See {@link org.apache.lucene.analysis.payloads.PayloadHelper#encodeInt(int, byte[], int)}.
  * 
  * @author Leonid Boytsov
  *    

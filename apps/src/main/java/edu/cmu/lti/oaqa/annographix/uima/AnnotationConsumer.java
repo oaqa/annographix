@@ -59,7 +59,7 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
   
   /**
    * 
-   * @param startValue
+   * @param startValue a new starting annotation ID.
    * @throws Exception
    */
   public void resetAnnotationId(int startValue) throws Exception {
@@ -199,6 +199,7 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
    * @param     docFields   a complete key-value map of indexable fields,
    *                        which are extracted from the 2-level indexable
    *                        document.
+   * @throws AnalysisEngineProcessException
    */
   protected abstract void doProcess(JCas viewJCas,
                                     String docNo,
@@ -249,7 +250,7 @@ public abstract class AnnotationConsumer extends CasAnnotator_ImplBase {
    *                    which represents a view containing annotations. 
    * @param     origAnnotList   a list of annotations to process
    * 
-   * @throws AnalysisEngineProcessException
+   * @return a list of annotation descriptions.
    */
   protected ArrayList<AnnotationProxy> generateAnnotations(
                                             JCas jcas,

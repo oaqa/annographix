@@ -169,7 +169,7 @@ public abstract class TermSpanIterator {
    * starting offsets, the element fitting into the span may follow 
    * an element that can fits into the span only partially. To ensure
    * that all elements inside the span are considered, we need to iterate
-   * until the starting offset becomes >= than the span's end offset.
+   * until the starting offset becomes &gt;= than the span's end offset.
    * 
    * 
    * @param     compStartId        an id of the first element in the component (inclusive).
@@ -348,7 +348,7 @@ public abstract class TermSpanIterator {
   /** 
    * Ending element (exclusive) index of elements that may be inside the span. 
    * If we subtract one from this ending element index, we obtain an index 
-   * of the annotation whose start offset is always < span' end offset, 
+   * of the annotation whose start offset is always less than the span's end offset, 
    * but the end offset may actually be larger than the span's end offset. 
    * Because of this, we have an additional check inside
    * the function {@link #checkSpanConstraints()}. This is done in this way

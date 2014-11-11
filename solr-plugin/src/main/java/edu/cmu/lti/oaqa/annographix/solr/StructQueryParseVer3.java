@@ -72,6 +72,7 @@ public class StructQueryParseVer3 {
 
   /**
    * @param     index       a text term/annotation index.
+   * @return  an ID of the specified component.
    */
   public int getComponentId(int index) {
     return mComponentId.get(index);
@@ -98,7 +99,7 @@ public class StructQueryParseVer3 {
    * 
    * The constructor parses queries.
    * 
-   * @param     query
+   * @param     query a query to parse
    * @throws    SyntaxError
    */
   public StructQueryParseVer3(String query) throws SyntaxError {
@@ -174,6 +175,7 @@ public class StructQueryParseVer3 {
    * 
    * @return true if provided parameters match an internal representation of
    *         a parsed query.
+   * @throws Exception
    */
   public boolean compareTo(
                     String tokens_[],

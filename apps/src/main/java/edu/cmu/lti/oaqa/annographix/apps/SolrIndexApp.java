@@ -29,7 +29,7 @@ import edu.cmu.lti.oaqa.annographix.solr.*;
  * pipeline and indexes their content using SOLR.
  * <p>
  * The first text file contains documents. The document
- * text is enclosed between tags <DOC></DOC> and occupies
+ * text is enclosed between tags &lt;DOC&gt; and &lt;DOC&gt; and occupies
  * exactly one line.
  * <p>
  * The second text file contains annotations in Indri format.

@@ -34,7 +34,7 @@ public class SolrEvalUtils {
    * @param results     found entries to memorize.
    * @param trecFile    an object used to write to the output file.
    * @param runId       a run ID.
-   * @param maxNum      a maximum number of results to save (can be < the 
+   * @param maxNum      a maximum number of results to save (can be less than 
    *                    the number of retrieved entries).
    * @throws IOException
    */

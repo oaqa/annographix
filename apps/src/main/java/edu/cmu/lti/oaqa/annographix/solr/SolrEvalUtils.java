@@ -23,10 +23,12 @@ import java.util.regex.*;
 import java.util.ArrayList;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.SolrDocumentList;
 
 public class SolrEvalUtils {
+  /** Some fake document ID, which is unlikely to be equal to a real one */
+  private static final String FAKE_DOC_ID = 
+      "THIS_IS_A_VERY_LONG_FAKE_DOCUMENT_ID_THAT_SHOULD_NOT_MATCH_ANY_REAL_ONES";
+
   /**
    * Create one line a TREC-like QREL file.
    * 
@@ -44,13 +46,48 @@ public class SolrEvalUtils {
                               BufferedWriter   trecFile,
                               String           runId,
                               int maxNum) throws IOException {
-
+    boolean bNothing = true;
     for (int i = 0; i < Math.min(results.length, maxNum); ++i) {
-      trecFile.write(String.format("%s\tQ0\t%s\t%d\t%f\t%s\n",
-                                   topicId, results[i].mDocId, 
-                                   (i+1), results[i].mScore, runId));
+      bNothing = false;
+      saveTrecOneEntry(trecFile, 
+                       topicId, results[i].mDocId, 
+                       (i+1), results[i].mScore, runId);
+    }
+    /*
+     *  If nothing is returned, let's a fake entry, otherwise trec_eval
+     *  will completely ignore output for this query (it won't give us zero
+     *  as it should have been!)
+     */
+    if (bNothing) {
+      saveTrecOneEntry(trecFile, 
+          topicId, FAKE_DOC_ID, 
+          1, 0, runId);      
     }
   }
+  
+  /**
+   * Save positions, scores, etc information for a single retrieved documents.
+   * 
+   * @param trecFile    an object used to write to the output file.
+   * @param topicId     a question ID.
+   * @param docId       a document ID of the retrieved document.
+   * @param docPos      a position in the result set (the smaller the better).
+   * @param score       a score of the document in the result set.
+   * @param runId       a run ID.
+   * @throws IOException
+   */
+  private static void saveTrecOneEntry(BufferedWriter trecFile,
+                                       String         topicId,
+                                       String         docId,
+                                       int            docPos,
+                                       float          score,
+                                       String         runId
+                                       ) throws IOException {
+    trecFile.write(String.format("%s\tQ0\t%s\t%d\t%f\t%s\n",
+        topicId, docId, 
+        docPos, score, runId));    
+  }
+  
   /*
    * This is for our private use only.
    */

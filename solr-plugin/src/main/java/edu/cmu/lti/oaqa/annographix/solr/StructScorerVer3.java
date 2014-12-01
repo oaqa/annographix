@@ -288,6 +288,7 @@ public class StructScorerVer3 extends Scorer {
         }
 
         if (doc2 > doc) {
+          target = doc2;
           break;
         }
         i++;
@@ -313,7 +314,10 @@ public class StructScorerVer3 extends Scorer {
         }
       }
 
-      doc = mAllPostsSortedByCost[0].nextDoc();
+      if (target <= doc)
+        doc = mAllPostsSortedByCost[0].nextDoc();
+      else
+        doc = mAllPostsSortedByCost[0].advance(target);
 
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
         return mCurrDocId = doc;

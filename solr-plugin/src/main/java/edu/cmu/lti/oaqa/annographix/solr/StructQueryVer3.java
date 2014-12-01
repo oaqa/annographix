@@ -214,12 +214,8 @@ public class StructQueryVer3 extends Query {
     public String toString() { return "weight(" + getQuery() + ")"; }
     
     /**
-     * 
-     * {@link #getValueForNormalization()} and {@link #normalize(float, float)}
-     * are implemented similarly to  
-     * org.apache.lucene.search.PhraseQuery.PhraseWeight#getValueForNormalization()
-     * and 
-     * org.apache.lucene.search.PhraseQuery.PhraseWeight#normalize(float, float).
+     * Should be a sum of individual normalization values, see
+     * a description of {@link org.apache.lucene.search.similarities.TFIDFSimilarity}. 
      * 
      */
     @Override

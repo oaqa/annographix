@@ -294,7 +294,7 @@ public abstract class OnePostStateBase {
   
   
   /**
-   * Move to the first document with id &gt;= docId.
+   * Move to the first document with id &gt;= docId without calling {@link #readDocElements()}.
    * 
    * @param docId           find a document with id at least this large.
    * @return                the first document with id &gt;= docId or {@link OnePostStateBase#NO_MORE_DOCS} if no docs are available with ids &gt;= docId.
@@ -304,14 +304,12 @@ public abstract class OnePostStateBase {
     mQty = 0;
     if (mDocId != NO_MORE_DOCS)
       mDocId = mPosting.advance(docId);
-    if (mDocId != NO_MORE_DOCS) {
-      readDocElements();
-    }
+
     return mDocId;
   }
   
   /**
-   * Move to the next available document.
+   * Move to the next available document without calling {@link #readDocElements()}.
    * 
    * @return    the next document iD or {@link OnePostStateBase#NO_MORE_DOCS} if no docs are available.
    * @throws IOException
@@ -320,9 +318,7 @@ public abstract class OnePostStateBase {
     mQty = 0;
     if (mDocId != NO_MORE_DOCS)
       mDocId = mPosting.nextDoc();
-    if (mDocId != NO_MORE_DOCS) {
-      readDocElements();
-    }
+
     return mDocId;
   }  
   

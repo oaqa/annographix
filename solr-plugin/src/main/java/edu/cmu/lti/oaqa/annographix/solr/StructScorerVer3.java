@@ -300,6 +300,12 @@ public class StructScorerVer3 extends Scorer {
          *  this document
          */
         mCurrDocId = doc;
+        /*
+         *  ... but first we need to read positional information  
+         *      and payload data. 
+         */
+        for (OnePostStateBase st: mAllPostsSortedByCost) 
+          st.readDocElements();
         mNumMatches = computeFreq();
 
         if (mNumMatches != 0) {

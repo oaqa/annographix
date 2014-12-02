@@ -21,5 +21,5 @@ if [ "$warm_up" = "1" ] ; then
 fi
 
 
-numRes=1000
+numRes=10000
 mvn compile exec:java -Dexec.mainClass=edu.cmu.lti.oaqa.annographix.apps.SolrQueryApp  -Dexec.args="-q $queryFile -u $uri -n $numRes -o $trec_out $wq"

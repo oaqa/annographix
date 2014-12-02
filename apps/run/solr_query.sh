@@ -14,5 +14,12 @@ if [ "$trec_out" = "" ] ; then
   echo "Specify the trec-style  output file (3d arg)"
   exit 1
 fi
+wq=""
+warm_up=$4
+if [ "$warm_up" = "1" ] ; then
+  wq=" -w "
+fi
+
+
 numRes=1000
-mvn compile exec:java -Dexec.mainClass=edu.cmu.lti.oaqa.annographix.apps.SolrQueryApp  -Dexec.args="-q $queryFile -u $uri -n $numRes -o $trec_out"
+mvn compile exec:java -Dexec.mainClass=edu.cmu.lti.oaqa.annographix.apps.SolrQueryApp  -Dexec.args="-q $queryFile -u $uri -n $numRes -o $trec_out $wq"

@@ -45,7 +45,8 @@ public class SolrQueryApp {
                        + "-u <Target Server URI> "
                        + "-q <Query file> "
                        + "-n <Max # of results> "
-                       + "-o <An optional TREC-style qrel file> ");
+                       + "-o <An optional TREC-style qrel file> "
+                       + "-w <Do a warm-up before each query call?>");
     System.exit(1);
   }
 
@@ -56,6 +57,7 @@ public class SolrQueryApp {
     options.addOption("q", null, true, "Qyery");
     options.addOption("n", null, true, "Max # of results");
     options.addOption("o", null, true, "An optional TREC-style qrel file runid");
+    options.addOption("w", null, false, "Do a warm-up query call, before each query");
 
     CommandLineParser parser = new org.apache.commons.cli.GnuParser(); 
     
@@ -98,6 +100,12 @@ public class SolrQueryApp {
       
       ArrayList<Double> queryTimes = new ArrayList<Double>();
       
+      boolean bDoWarmUp = cmd.hasOption("w");
+      
+      if (bDoWarmUp) {
+        System.out.println("Using a warmup step!");
+      }
+      
       int queryQty = 0;
       for (String t : FileUtils.readLines(new File(queryFile))) {
         t = t.trim();
@@ -107,8 +115,14 @@ public class SolrQueryApp {
         String qID = t.substring(0, ind);
         String q = t.substring(ind + 1);
         
+        SolrDocumentList res = null;
+        
+        if (bDoWarmUp) {
+          res = solr.runQuery(q, fieldList, numRet);
+        }
+        
         Long tm1 = System.currentTimeMillis();
-        SolrDocumentList res = solr.runQuery(q, fieldList, numRet);
+        res = solr.runQuery(q, fieldList, numRet);
         Long tm2 = System.currentTimeMillis();
         retQty += res.getNumFound();
         System.out.println(qID + " Obtained: " + res.getNumFound() + 

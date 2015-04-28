@@ -25,12 +25,14 @@ import java.util.ArrayList;
 import org.apache.commons.io.FileUtils;
 
 public class SolrEvalUtils {
+  protected static final String NL = System.getProperty("line.separator");
+  
   /** Some fake document ID, which is unlikely to be equal to a real one */
   private static final String FAKE_DOC_ID = 
       "THIS_IS_A_VERY_LONG_FAKE_DOCUMENT_ID_THAT_SHOULD_NOT_MATCH_ANY_REAL_ONES";
 
   /**
-   * Create one line of a TREC result file.
+   * Saves query results to a TREC result file.
    * 
    * @param topicId     a question ID.
    * @param results     found entries to memorize.
@@ -83,9 +85,25 @@ public class SolrEvalUtils {
                                        float          score,
                                        String         runId
                                        ) throws IOException {
-    trecFile.write(String.format("%s\tQ0\t%s\t%d\t%f\t%s\n",
+    trecFile.write(String.format("%s\tQ0\t%s\t%d\t%f\t%s%s",
         topicId, docId, 
-        docPos, score, runId));    
+        docPos, score, runId,
+        NL));    
+  }
+
+  /**
+   * Add one line to the TREC QREL file. 
+   * 
+   * @param qrelFile
+   * @param topicId
+   * @param docId
+   * @param relGrade
+   */
+  public static void saveQrelOneEntry(BufferedWriter qrelFile,
+                                      String           topicId,
+                                      String           docId,
+                                      int              relGrade) throws IOException {
+    qrelFile.write(String.format("%s 0 %s %d%c", topicId, docId, relGrade, NL));
   }
   
   /*

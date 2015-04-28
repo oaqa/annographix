@@ -103,7 +103,7 @@ public class SolrEvalUtils {
                                       String           topicId,
                                       String           docId,
                                       int              relGrade) throws IOException {
-    qrelFile.write(String.format("%s 0 %s %d%c", topicId, docId, relGrade, NL));
+    qrelFile.write(String.format("%s 0 %s %d%s", topicId, docId, relGrade, NL));
   }
   
   /*

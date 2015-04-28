@@ -137,13 +137,6 @@ public class UtilConst {
    */
   public static final String CONFIG_ANNOTATION_FIELD = "annot_field";  
   
-  
-  /**
-   * 
-   * This class holds keeps common constants and procedures
-   * that are used for indexing.
-   * 
-   */
 
   public static final String TAG_DOC_ENTRY = "DOC";
   public static final String TAG_DOCNO     = "DOCNO";

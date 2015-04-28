@@ -30,7 +30,7 @@ public class SolrEvalUtils {
       "THIS_IS_A_VERY_LONG_FAKE_DOCUMENT_ID_THAT_SHOULD_NOT_MATCH_ANY_REAL_ONES";
 
   /**
-   * Create one line a TREC-like QREL file.
+   * Create one line of a TREC result file.
    * 
    * @param topicId     a question ID.
    * @param results     found entries to memorize.

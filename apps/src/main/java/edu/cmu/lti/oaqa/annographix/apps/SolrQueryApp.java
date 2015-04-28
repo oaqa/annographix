@@ -34,8 +34,8 @@ import edu.cmu.lti.oaqa.annographix.solr.*;
  */
 public class SolrQueryApp {
   /** 
-   * This is a run name to place in a QREL file, currently we don't
-   * employ it anyware and, therefore, opt to use a fake run name value.  
+   * This is a run name to place in a TREC result file, currently we don't
+   * employ the run name anywhere and, therefore, opt to use a fake run name value.  
    */
   private static final String TREC_RUN = "fakerun";
 
@@ -45,7 +45,7 @@ public class SolrQueryApp {
                        + "-u <Target Server URI> "
                        + "-q <Query file> "
                        + "-n <Max # of results> "
-                       + "-o <An optional TREC-style qrel file> "
+                       + "-o <An optional TREC-style output file> "
                        + "-w <Do a warm-up before each query call?>");
     System.exit(1);
   }
@@ -56,12 +56,12 @@ public class SolrQueryApp {
     options.addOption("u", null, true, "Solr URI");
     options.addOption("q", null, true, "Qyery");
     options.addOption("n", null, true, "Max # of results");
-    options.addOption("o", null, true, "An optional TREC-style qrel file runid");
+    options.addOption("o", null, true, "An optional TREC-style output file");
     options.addOption("w", null, false, "Do a warm-up query call, before each query");
 
     CommandLineParser parser = new org.apache.commons.cli.GnuParser(); 
     
-    BufferedWriter qrelFile = null;
+    BufferedWriter trecOutFile = null;
     
     try {
       CommandLine cmd = parser.parse(options, args);
@@ -88,7 +88,7 @@ public class SolrQueryApp {
       }      
       
       if (cmd.hasOption("o")) {
-        qrelFile = new BufferedWriter(new FileWriter(new File(cmd.getOptionValue("o"))));
+        trecOutFile = new BufferedWriter(new FileWriter(new File(cmd.getOptionValue("o"))));
       }
       
       List<String> fieldList = new ArrayList<String>();
@@ -132,7 +132,7 @@ public class SolrQueryApp {
         queryTimes.add(delta);
         ++queryQty;
         
-        if (qrelFile != null) {
+        if (trecOutFile != null) {
 
           ArrayList<SolrRes> resArr = new ArrayList<SolrRes>();
           for (SolrDocument doc : res) {
@@ -145,10 +145,9 @@ public class SolrQueryApp {
           
           SolrEvalUtils.saveTrecResults(qID, 
                                    results, 
-                                   qrelFile, 
+                                   trecOutFile, 
                                    TREC_RUN, 
-                                   results.length);
-          
+                                   results.length);          
         }
       }
       double devTime = 0, meanTime = totalTime / queryQty;
@@ -164,7 +163,7 @@ public class SolrQueryApp {
                             "Avg # of docs returned: %.2f", retQty / queryQty));
           
       solr.close();
-      qrelFile.close();
+      trecOutFile.close();
     } catch (ParseException e) {
       Usage("Cannot parse arguments");
     } catch(Exception e) {

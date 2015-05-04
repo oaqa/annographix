@@ -125,7 +125,7 @@ public final class SolrServerWrapper implements Closeable {
   }
 
   /**
-   * Executes a query, additionally allows to specify query fields.
+   * Executes a query, additionally allows to specify result fields.
    * 
    * @param q           a query string.
    * @param fieldList   a list of field names.
@@ -144,6 +144,33 @@ public final class SolrServerWrapper implements Closeable {
     QueryResponse rsp = mServer.query(query, METHOD.POST);
     return rsp.getResults();
   }
+  
+  /**
+   * Executes a query, additionally allows to specify the default field, the filter query, AND result fields.
+   * 
+   * @param q               a query string.
+   * @param defaultField    a default field name (or null).
+   * @param fieldList       a list of field names.
+   * @param filterQuery     a name of the filter query that can be applied without changing scores (or null).
+   * @param results         the maximum number of entries to return.
+   * 
+   * @return a list of documents, which is an object of the type {@link org.apache.solr.common.SolrDocumentList}.
+   * @throws SolrServerException
+   */
+  public SolrDocumentList runQuery(String q, 
+                                  String       defaultField,
+                                  List<String> fieldList,
+                                  String       filterQuery,
+                                  int results) throws SolrServerException {
+    SolrQuery query = new SolrQuery();
+    query.setQuery(q);
+    if (filterQuery != null) query.setParam("fq", filterQuery);
+    if (defaultField != null) query.setParam("df", defaultField);
+    query.setRows(results);
+    query.setFields(fieldList.toArray(new String[1]));
+    QueryResponse rsp = mServer.query(query, METHOD.POST);
+    return rsp.getResults();
+  }  
 
   /**
    * Reads a value of a single- or multi-value text field from a SOLR server. 

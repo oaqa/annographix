@@ -54,7 +54,7 @@ public class SolrQueryApp {
     Options options = new Options();
     
     options.addOption("u", null, true, "Solr URI");
-    options.addOption("q", null, true, "Qyery");
+    options.addOption("q", null, true, "Query");
     options.addOption("n", null, true, "Max # of results");
     options.addOption("o", null, true, "An optional TREC-style output file");
     options.addOption("w", null, false, "Do a warm-up query call, before each query");
@@ -93,7 +93,7 @@ public class SolrQueryApp {
       
       List<String> fieldList = new ArrayList<String>();
       fieldList.add(UtilConst.ID_FIELD);
-      fieldList.add("score");
+      fieldList.add(UtilConst.SCORE_FIELD);
       
       double totalTime = 0;
       double retQty = 0;

@@ -23,6 +23,13 @@ public class SolrRes implements Comparable<SolrRes> {
   public String               mDocId;
   public ArrayList<String>    mDocText;
   public float                mScore;
+  
+  public SolrRes(String docId, float score) {
+    mDocId = docId;
+    mScore = score;
+    mDocText = null;
+  }
+  
   @SuppressWarnings("unchecked")
   public SolrRes(String docId, Object docText, float score) throws Exception {
     mDocId = docId;

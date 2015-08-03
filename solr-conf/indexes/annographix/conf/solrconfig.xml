@@ -57,6 +57,7 @@
   </requestDispatcher>
 
   <!-- Request Handler to do structural queries -->
+  <!-- See https://cwiki.apache.org/confluence/display/solr/RequestHandlers+and+SearchComponents+in+SolrConfig for more details -->
   <queryParser name="annographix" 
     class="edu.cmu.lti.oaqa.annographix.solr.ParserPluginVer3"/>
   <requestHandler name="/annographix" class="solr.SearchHandler">

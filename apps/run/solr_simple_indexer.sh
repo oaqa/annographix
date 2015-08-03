@@ -6,7 +6,7 @@ if [ "$text" = "" ] ; then
 fi
 uri=$2
 if [ "$uri" = "" ] ; then
-  echo "Specify uri (3d arg)"
+  echo "Specify uri (2d arg)"
   exit 1
 fi
 batchQty=""

@@ -23,13 +23,6 @@
         <mandatory>true</mandatory>
       </configurationParameter>
       <configurationParameter>
-        <name>annot_field</name>
-        <description>name of the annotation field</description>
-        <type>String</type>
-        <multiValued>false</multiValued>
-        <mandatory>true</mandatory>
-      </configurationParameter>
-      <configurationParameter>
         <name>out_text_file</name>
         <description>name of the output text file in Indri TRECTEXT format.</description>
         <type>String</type>
@@ -69,12 +62,6 @@
         <name>text_field</name>
         <value>
           <string>text</string>
-        </value>
-      </nameValuePair>
-      <nameValuePair>
-        <name>annot_field</name>
-        <value>
-          <string>annot</string>
         </value>
       </nameValuePair>
       <nameValuePair>

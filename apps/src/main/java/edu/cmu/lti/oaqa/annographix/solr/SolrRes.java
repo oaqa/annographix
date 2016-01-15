@@ -46,7 +46,7 @@ public class SolrRes implements Comparable<SolrRes> {
   }
   @Override
   public int compareTo(SolrRes o) {
-    if (mScore != o.mScore) return mScore > o.mScore ? -1 : (mScore < o.mScore ? 1:0);
-    return mDocId.compareTo(o.mDocId);
+    // If mScore is greater => result is -1
+    return (int)Math.signum(o.mScore - mScore);
   }
 };
